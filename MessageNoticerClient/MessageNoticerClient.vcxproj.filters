@@ -18,5 +18,28 @@
     <ClCompile Include="MessageNoticerClient.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\MessageNoticerServer\Network.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\MessageNoticerServer\Packet.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\MessageNoticerServer\Network.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="HandshakePacket.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Packet.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

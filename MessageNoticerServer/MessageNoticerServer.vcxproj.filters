@@ -21,8 +21,8 @@
     <ClCompile Include="pch.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Network.h">
-      <Filter>头文件</Filter>
+    <ClCompile Include="Packet.cpp">
+      <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Network.cpp">
       <Filter>源文件</Filter>
@@ -30,6 +30,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Client.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Packet.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="HandshakePacket.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Network.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

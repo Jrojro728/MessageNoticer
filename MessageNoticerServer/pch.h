@@ -12,12 +12,29 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
+#ifndef SERVER_APP
+#define SERVER_APP
+#endif // !SERVER_APP
+
+#define NOMINMAX
+
+//std libs
 #include <iostream>
+#include <vector>
+#include <stdlib.h>
+#include <stdio.h>
+
+//Windows libs
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include <stdlib.h>
-#include <stdio.h>
+
+//Other libs
+#include <boost/uuid.hpp>
+#include <json/json.h>
+
+namespace uuid = ::boost::uuids;
+using std::string;
 
 #pragma comment(lib, "Ws2_32.lib")
 

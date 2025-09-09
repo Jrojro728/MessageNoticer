@@ -1,4 +1,37 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <RemoteDebuggerWorkingDirectory>C:\Users\Administrator\Desktop\MessageNoticer\</RemoteDebuggerWorkingDirectory>
+    <RemoteDebuggerServerName>120.79.245.194:4026</RemoteDebuggerServerName>
+    <DeploymentDirectory>C:\Users\Administrator\Desktop\MessageNoticer\</DeploymentDirectory>
+    <AdditionalFiles>$(ProjectDir)..\$(IntermediateOutputPath)jsoncpp.dll</AdditionalFiles>
+    <RemoteDebuggerCommand>C:\Users\Administrator\Desktop\MessageNoticer\MessageNoticerServer.exe</RemoteDebuggerCommand>
+    <RemoteDebuggerAttach>false</RemoteDebuggerAttach>
+    <RemoteDebuggerDeployCppRuntime>true</RemoteDebuggerDeployCppRuntime>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <RemoteDebuggerWorkingDirectory>C:\Users\Administrator\Desktop\MessageNoticer\</RemoteDebuggerWorkingDirectory>
+    <RemoteDebuggerServerName>120.79.245.194:4026</RemoteDebuggerServerName>
+    <DebuggerFlavor>WindowsRemoteDebugger</DebuggerFlavor>
+    <DeploymentDirectory>\\120.79.245.194\MessageNoticer\</DeploymentDirectory>
+    <AdditionalFiles>\\120.79.245.194\MessageNoticer\</AdditionalFiles>
+    <RemoteDebuggerCommand>C:\Users\Administrator\Desktop\MessageNoticer\MessageNoticerServer.exe</RemoteDebuggerCommand>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <RemoteDebuggerWorkingDirectory>C:\Users\Administrator\Desktop\MessageNoticer\</RemoteDebuggerWorkingDirectory>
+    <RemoteDebuggerServerName>120.79.245.194:4026</RemoteDebuggerServerName>
+    <DebuggerFlavor>WindowsRemoteDebugger</DebuggerFlavor>
+    <DeploymentDirectory>\\120.79.245.194\MessageNoticer\</DeploymentDirectory>
+    <AdditionalFiles>\\120.79.245.194\MessageNoticer\</AdditionalFiles>
+    <RemoteDebuggerCommand>C:\Users\Administrator\Desktop\MessageNoticer\MessageNoticerServer.exe</RemoteDebuggerCommand>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <RemoteDebuggerWorkingDirectory>C:\Users\Administrator\Desktop\MessageNoticer\</RemoteDebuggerWorkingDirectory>
+    <RemoteDebuggerServerName>120.79.245.194:4026</RemoteDebuggerServerName>
+    <DebuggerFlavor>WindowsRemoteDebugger</DebuggerFlavor>
+    <DeploymentDirectory>\\120.79.245.194\MessageNoticer\</DeploymentDirectory>
+    <AdditionalFiles>\\120.79.245.194\MessageNoticer\</AdditionalFiles>
+    <RemoteDebuggerCommand>C:\Users\Administrator\Desktop\MessageNoticer\MessageNoticerServer.exe</RemoteDebuggerCommand>
+  </PropertyGroup>
 </Project>

@@ -102,10 +102,6 @@ int Recv(SOCKET& s, char*& DataBuffer)
     std::cout << s << "sent: " << DataBuffer << "\n";
 #endif // _DEBUG
 
-#ifdef SERVER_APP
-    if (result == SOCKET_ERROR || result == 0)
-		throw ClientSocketClosedExpection();
-#endif
     return result;
 }
 

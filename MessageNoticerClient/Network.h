@@ -1,14 +1,6 @@
 #pragma once
 #include "pch.h"
 
-class ClientSocketClosedExpection : public std::exception
-{
-public:
-	const char* what() const noexcept override {
-		return "Client socket closed.";
-	}
-};
-
 //初始化及设置
 
 /// <summary>
