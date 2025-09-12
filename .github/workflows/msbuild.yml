@@ -38,6 +38,7 @@ jobs:
       id: runvcpkg
       with:
         vcpkgDirectory: '${{env.GITHUB_WORKSPACE}}/vcpkg'
+        vcpkgGitCommitId: '7213cf8135c329c37c7e2778e40774489a0583a8'
         # Run vcpkg with the command specified by the `runVcpkgFormatString` input.
         runVcpkgInstall: true
         vcpkgJsonGlob: '**/vcpkg.json'
