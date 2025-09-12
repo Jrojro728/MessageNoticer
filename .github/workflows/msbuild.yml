@@ -29,9 +29,18 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-
+    - uses: lukka/get-cmake@latest
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      id: runvcpkg
+      with:
+        vcpkgDirectory: '${{env.GITHUB_WORKSPACE}}/vcpkg'
+        # Run vcpkg with the command specified by the `runVcpkgFormatString` input.
+        runVcpkgInstall: true
+        vcpkgJsonGlob: '**/vcpkg.json'
 
     - name: Restore NuGet packages
       working-directory: ${{env.GITHUB_WORKSPACE}}
