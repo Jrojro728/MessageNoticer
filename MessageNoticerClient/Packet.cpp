@@ -1,12 +1,6 @@
 #include "pch.h"
 #include "Packet.h"
 
-Packet::Packet(SOCKET s)
-{
-	PacketSize = ::Recv(s, Data);
-	Packet(Data, PacketSize);
-}
-
 Packet::Packet(const char* data, unsigned int packetSize, unsigned short packetID, unsigned char packetVersion)
 {
 	this->Data = const_cast<char *>(data);
@@ -48,7 +42,7 @@ void Packet::AddData(const char* data, unsigned int size)
 {
 	if (Data == nullptr)
 	{
-		char* newData = new char[size + 7]; // 7 bytes for header (PacketSize, PacketID, PacketVersion)
+		char* newData = new char[size + 7 + 4]; // 7 bytes for header (PacketSize, PacketID, PacketVersion) + 4 bytes for Data size
 		PacketSize = size + 7 + 4; // Set new PacketSize
 		newData[0] = (PacketSize >> 24) & 0xFF; // Copy PacketSize
 		newData[1] = (PacketSize >> 16) & 0xFF;
@@ -67,17 +61,22 @@ void Packet::AddData(const char* data, unsigned int size)
 	}
 	else
 	{
-		char* newData = new char[PacketSize + size];
-		PacketSize += size; // Set new PacketSize
-		newData[0] = (PacketSize >> 24) & 0xFF; // Copy PacketSize
+		unsigned int oldPacketSize = PacketSize;
+		char* newData = new char[oldPacketSize + size + 4];
+		memcpy(newData, Data, oldPacketSize); // 复制旧数据
+		newData[oldPacketSize + 1] = (size >> 24) & 0xFF; // Copy size
+		newData[oldPacketSize + 2] = (size >> 16) & 0xFF;
+		newData[oldPacketSize + 3] = (size >> 8) & 0xFF;
+		newData[oldPacketSize + 4] = size & 0xFF; // 追加新数据的大小
+		memcpy(newData + oldPacketSize + 5, data, size); // 追加新数据
+		delete[] Data;
+		Data = newData;
+		PacketSize = oldPacketSize + size;
+		// 更新头部的PacketSize字段
+		newData[0] = (PacketSize >> 24) & 0xFF;
 		newData[1] = (PacketSize >> 16) & 0xFF;
 		newData[2] = (PacketSize >> 8) & 0xFF;
 		newData[3] = PacketSize & 0xFF;
-		memcpy(newData + 4, Data, PacketSize); // Copy old data
-		memcpy(newData + PacketSize, data, size); //Copy new data
-		delete[] Data; // Delete old data
-		Data = newData; // Assign new data
-		PacketSize += size;
 	}
 }
 

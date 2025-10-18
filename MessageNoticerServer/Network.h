@@ -1,7 +1,8 @@
 #pragma once
 #include "pch.h"
+#include "Logger.h"
 
-class ClientSocketClosedExpection : public std::exception
+class ClientSocketClosedException : public std::exception
 {
 public:
 	const char* what() const noexcept override {

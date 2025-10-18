@@ -3,11 +3,14 @@
 
 #include "pch.h"
 #include "Network.h"
+#include "Logger.h"
 #include "HandshakePacket.h"
 
 int main()
 {
-    start:
+    log4cplus::Initializer init;
+    Logger logger = GetLogger("main");
+start:
     InitNetwork();
     SOCKET sServer;
     CreateSocket(sServer, "12306", "127.0.0.1");
@@ -26,23 +29,24 @@ int main()
 			HandshakeAckPacket("whhhhhh", Ok).Send(sServer);
             if (Packet::PacketFromNetworkRecv(sServer).GetPacketID() == HandshakeSuccess)
             {
-                std::cout << "Connected to server: " << Root["info"]["name"].asString() << " Version: " << Root["info"]["version"].asString() << " Protocol: " << Root["info"]["protocol"].asUInt() << std::endl;
+                LOG_INFO(logger, "Connected to server: " << Root["info"]["name"].asString() << " Version: " << Root["info"]["version"].asString() << " Protocol: " << Root["info"]["protocol"].asUInt());
             }
         }
         else
         {
             if (Packet(cstr).GetPacketID() == PacketType::HandshakeError)
             {
-                std::cerr << "Handshake error from server: " << Packet(cstr).GetData() << std::endl;
+                LOG_FATAL(logger, "Handshake error from server: " << Packet(cstr).GetData());
             }
             else
-				std::cerr << "Invalid handshake response from server." << std::endl;
+                LOG_FATAL(logger, "Invalid handshake response from server.");
         }
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Error receiving packet: " << e.what() << std::endl;
+        LOG_FATAL(logger, "Error receiving packet: " << e.what());
         closesocket(sServer);
 		goto start;
 	}
+    return 0;
 }

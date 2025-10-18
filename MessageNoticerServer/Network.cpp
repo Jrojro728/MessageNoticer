@@ -1,9 +1,11 @@
 #include "pch.h"
 #include "Network.h"
+#include "Logger.h"
 
 using std::cerr, std::endl;
 //检测数据暂存区
 char* TempDataBuffer = new char[2097152];
+Logger NetworkLogger = GetLogger("Network");
 
 int InitNetwork()
 {
@@ -11,7 +13,7 @@ int InitNetwork()
     WSADATA wd;
     if (WSAStartup(MAKEWORD(2, 2), &wd) == SOCKET_ERROR)
     {
-        cerr << "WSAStartup error:" << GetLastError() << endl;
+        LOG_FATAL(NetworkLogger,"WSAStartup error:" << GetLastError());
         return 1;
     }
     return 0;
@@ -28,7 +30,7 @@ int CreateSocket(SOCKET& s, const char* port, const char* address)
     // 0.解算地址
     if (getaddrinfo(address, port, &hints, &result))
     {
-        cerr << "getaddrinfo failed:" << GetLastError() << endl;
+        LOG_FATAL(NetworkLogger, "getaddrinfo failed:" << GetLastError());
         WSACleanup();
         return 1;
     }
@@ -39,7 +41,7 @@ int CreateSocket(SOCKET& s, const char* port, const char* address)
         s = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
         if (s == INVALID_SOCKET)
         {
-            cerr << "socket error:" << GetLastError() << endl;
+            LOG_FATAL(NetworkLogger, "socket error:" << GetLastError());
             WSACleanup();
             continue;
         }
@@ -47,7 +49,7 @@ int CreateSocket(SOCKET& s, const char* port, const char* address)
 #ifdef CLIENT_APP
         // 2.连接到服务器
         if (connect(s, result->ai_addr, (int)result->ai_addrlen) == SOCKET_ERROR) {
-            cerr << "connect error:" << GetLastError() << endl;
+            LOG_FATAL(NetworkLogger, "connect error:" << GetLastError());
             closesocket(s);
             WSACleanup();
             s = INVALID_SOCKET;
@@ -62,7 +64,7 @@ int CreateSocket(SOCKET& s, const char* port, const char* address)
     // 2.绑定到ip与端口
     if (bind(s, result->ai_addr, (int)result->ai_addrlen) == SOCKET_ERROR)
     {
-        cerr << "bind error:" << GetLastError() << endl;
+        LOG_FATAL(NetworkLogger, "bind error:" << GetLastError());
         freeaddrinfo(result);
         closesocket(s);
         WSACleanup();
@@ -73,7 +75,7 @@ int CreateSocket(SOCKET& s, const char* port, const char* address)
     // 3.监听套接字
     if (listen(s, SOMAXCONN) == SOCKET_ERROR)
     {
-        cerr << "listen error:" << GetLastError() << endl;
+        LOG_FATAL(NetworkLogger, "listen error:" << GetLastError());
         closesocket(s);
         WSACleanup();
         s = INVALID_SOCKET;
@@ -83,7 +85,7 @@ int CreateSocket(SOCKET& s, const char* port, const char* address)
 
     freeaddrinfo(result);
     if (s == INVALID_SOCKET) {
-        cerr << "Unable to create socket!" << WSAGetLastError();
+        LOG_FATAL(NetworkLogger, "Unable to create socket!" << WSAGetLastError());
         WSACleanup();
         return 1;
     }
@@ -99,12 +101,12 @@ int Recv(SOCKET& s, char*& DataBuffer)
     memset(DataBuffer, 0, result + 1);
     result = recv(s, DataBuffer, result + 1, 0);
 #ifdef _DEBUG
-    std::cout << s << "sent: " << DataBuffer << "\n";
+    LOG_DEBUG(NetworkLogger, s << "sent: " << DataBuffer);
 #endif // _DEBUG
 
 #ifdef SERVER_APP
     if (result == SOCKET_ERROR || result == 0)
-		throw ClientSocketClosedExpection();
+		throw ClientSocketClosedException();
 #endif
     return result;
 }
@@ -113,7 +115,7 @@ int Send(SOCKET& s, const char* DataBuffer, int Size)
 {
     send(s, DataBuffer, Size, 0);
 #ifdef _DEBUG
-    std::cout << s << "recv: " << DataBuffer << "\n";
+    LOG_DEBUG(NetworkLogger, s << "recv: " << DataBuffer);
 #endif // _DEBUG
 
     return 0;
@@ -123,7 +125,7 @@ int Send(SOCKET& s, const char* DataBuffer)
 {
     send(s, DataBuffer, strlen(DataBuffer), 0);
 #ifdef _DEBUG
-    std::cout << s << "recv: " << DataBuffer << "\n";
+    LOG_DEBUG(NetworkLogger, s << "recv: " << DataBuffer);
 #endif // _DEBUG
 
     return 0;

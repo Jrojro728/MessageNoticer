@@ -8,7 +8,7 @@ enum PacketType : UINT16
 	HandshakeRequest = 1,	//Start Handshake request
 	HandshakeInfo = 2,		//Handshake info, such as server name, version, max users, etc.
 	HandshakeAck = 3,		//Handshake acknowledge, client acknowledges the handshake info
-	HandshakeResponse = 4,	//Response to Handshake request
+	HandshakeResponse = 4,	//Response to Handshake request, can be 5 or 6, not implemented
 	HandshakeError = 5,		//Error during Handshake process, such as timeout or invalid request
 	HandshakeSuccess = 6	//Handshake success, server and client can start to communicate
 };
@@ -39,6 +39,8 @@ public:
 	Packet(const Packet&) = default;
 	Packet(Packet&&) = default;
 	virtual ~Packet() = default;
+
+	void SetUUID(uuid::uuid UUID) { PacketUUID = UUID; }; // Set the UUID of the packet
 	virtual std::string GetType() const { return "Packet"; }; // Return the type of the packet
 	unsigned int GetPacketSize() const { return PacketSize; } // Get the size of the packet data
 	unsigned short GetPacketID() const { return PacketID; } // Get the ID of the packet

@@ -32,9 +32,11 @@
 //Other libs
 #include <boost/uuid.hpp>
 #include <json/json.h>
+#include <log4cplus/log4cplus.h>
 
 namespace uuid = ::boost::uuids;
 using std::string;
+using namespace log4cplus;
 
 #pragma comment(lib, "Ws2_32.lib")
 

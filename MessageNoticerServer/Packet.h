@@ -39,6 +39,8 @@ public:
 	Packet(const Packet&) = default;
 	Packet(Packet&&) = default;
 	virtual ~Packet() = default;
+
+	void SetUUID(uuid::uuid UUID) { PacketUUID = UUID; }; // Set the UUID of the packet
 	virtual std::string GetType() const { return "Packet"; }; // Return the type of the packet
 	unsigned int GetPacketSize() const { return PacketSize; } // Get the size of the packet data
 	unsigned short GetPacketID() const { return PacketID; } // Get the ID of the packet

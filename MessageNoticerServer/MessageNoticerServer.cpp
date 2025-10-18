@@ -8,8 +8,11 @@ using std::cout, std::endl, std::cerr;
 
 int main()
 {
-	// 初始化网络
+	// 初始化
     InitNetwork();
+    log4cplus::Initializer initializer;
+    Logger logger = GetLogger(LOG4CPLUS_TEXT("main"));
+	LOG_INFO(logger, "Logger initialized.");
     SOCKET sListen;
     std::vector<Client> ClientList;
     uuid::random_generator UUIDGenerator;
@@ -19,15 +22,15 @@ int main()
 	// 创建监听套接字
     CreateSocket(sListen, "12306", NULL);
     
-    fd_set readset;
+    fd_set readset{};
     FD_ZERO(&readset);
     FD_SET(sListen, &readset);
     while (true)
     {
         for (auto& i : ClientList)
-            cout << "{ " << i.GetClientID() << "; " << i.GetReadableClientName() << "};" << endl;
+            LOG_INFO(logger, "{ " << i.GetClientID() << "; " << i.GetReadableClientName() << "};");
 
-        fd_set tmpset; // 定义一个临时的集合
+        fd_set tmpset{}; // 定义一个临时的集合
         FD_ZERO(&tmpset); // 初始化集合
         tmpset = readset; // 每次循环都是所有的套接字
 
@@ -47,11 +50,11 @@ int main()
                 SOCKET c = accept(sSelected, NULL, NULL);
                 // fd_set集合最大值为64
                 if (readset.fd_count > FD_SETSIZE) 
-                    cerr << "max 64 clients for now." << endl;
+                    LOG_ERROR(logger, "max 64 clients for now.");
 
                 //往集合中添加客户端套接字
                 FD_SET(c, &readset);
-                cout << c << "try to login." << endl;
+                LOG_INFO(logger, c << "try to login.");
             }
             else {
                 //处理已关闭的客户端
@@ -65,44 +68,46 @@ int main()
                 // 接收客户端的数据
                 char* buf = new char[2048];
                 try {
+                    // 客户端握手请求
                     if (!Reader.parse(Packet::PacketFromNetworkRecv(sSelected).GetData(), Root, false))
                     {
-                        cerr << "Request parse failed!\n";
+                        LOG_ERROR(logger, "Request parse failed!");
                         HandshakeErrorPacket("Invalid handshake request.").Send(sSelected);
                         break;
                     }
                     if (strcmp(Root["fastmessage"].asCString(), "Hello from client!"))
                     {
-                        cerr << "Request parse failed!\n";
+                        LOG_ERROR(logger, "Request parse failed! The format is bad");
                         HandshakeErrorPacket("Invalid handshake request.").Send(sSelected);
                         break;
                     }
 
                     // 给客户端发送信息
-                    HandshakeInfoPacket("bla", "b1", 64, ClientList.size(), 1, Online).Send(sSelected);
+                    HandshakeInfoPacket("blabla", "b1", 64, ClientList.size(), 1, Online).Send(sSelected);
                     // 客户端确认
                     if (!Reader.parse(Packet::PacketFromNetworkRecv(sSelected).GetData(), Root, false))
                     {
-                        cerr << "Ack parse failed!\n";
+                        LOG_ERROR(logger, "Ack parse failed!");
                         HandshakeErrorPacket("Invalid handshake ack.").Send(sSelected);
                         break;
                     }
                     if (!(Root["status"].asUInt() == Ok))
                     {
-                        cerr << "Client error!\n";
+                        LOG_ERROR(logger, "Clientside error!");
                         HandshakeErrorPacket().Send(sSelected);
                         break;
                     }
                 }
-                catch (ClientSocketClosedExpection&) {
+                catch (ClientSocketClosedException&) {
                     closesocket(sSelected);
                     FD_CLR(sSelected, &readset);
-                    cout << sSelected << "logged off." << endl;
+                    LOG_INFO(logger, sSelected << "logged off.");
                     if (ClientList.size() != 0)
                         ClientList.erase(std::find(ClientList.begin(), ClientList.end(), Client(sSelected)));
                     break;
 				}
 
+				//发送握手成功包
 				HandshakeSuccessPacket().Send(sSelected);
                 ClientList.push_back(Client(sSelected, UUIDGenerator(), Root["name"].asString()));
                 delete[] buf;
