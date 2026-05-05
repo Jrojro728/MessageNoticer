@@ -1,36 +1,51 @@
-// pch.h: 这是预编译标头文件。
-// 下方列出的文件仅编译一次，提高了将来生成的生成性能。
-// 这还将影响 IntelliSense 性能，包括代码完成和许多代码浏览功能。
-// 但是，如果此处列出的文件中的任何一个在生成之间有更新，它们全部都将被重新编译。
-// 请勿在此处添加要频繁更新的文件，这将使得性能优势无效。
+// pch.h —Precompiled header
 #pragma once
 
 #ifndef PCH_H
 #define PCH_H
-
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
 
 #ifndef CLIENT_APP
 #define CLIENT_APP
 #endif // !CLIENT_APP
 
 #define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
 
-//std libs
+// Standard C++ library
 #include <iostream>
 #include <vector>
-#include <stdlib.h>
-#include <stdio.h>
+#include <cstdlib>
+#include <cstdio>
+#include <iomanip>
+#include <sstream>
+#include <memory>
+#include <thread>
+#include <chrono>
+#include <format>
+#include <cstring>
+#include <cstdint>
 
-//Windows libs
+// Platform-specific socket headers
+#ifdef _WIN32
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#pragma comment(lib, "Ws2_32.lib")
+#else
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <poll.h>
+#include <errno.h>
+#include <signal.h>
+#endif
 
-//Other libs
-#include <boost/uuid.hpp>
+// Third-party libraries
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 #include <json/json.h>
 #include <log4cplus/log4cplus.h>
 
@@ -38,6 +53,5 @@ namespace uuid = ::boost::uuids;
 using std::string;
 using namespace log4cplus;
 
-#pragma comment(lib, "Ws2_32.lib")
-
 #endif //PCH_H
+

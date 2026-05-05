@@ -2,15 +2,19 @@
 #include "pch.h"
 #include "Network.h"
 
-enum PacketType : UINT16
+enum PacketType : uint16_t
 {
-	Null = 0,				// NULL packet
+	Null = 0,				//NULL packet
 	HandshakeRequest = 1,	//Start Handshake request
 	HandshakeInfo = 2,		//Handshake info, such as server name, version, max users, etc.
 	HandshakeAck = 3,		//Handshake acknowledge, client acknowledges the handshake info
 	HandshakeResponse = 4,	//Response to Handshake request, can be 5 or 6, not implemented
 	HandshakeError = 5,		//Error during Handshake process, such as timeout or invalid request
-	HandshakeSuccess = 6	//Handshake success, server and client can start to communicate
+	HandshakeSuccess = 6,	//Handshake success, server and client can start to communicate
+	SendAMessage = 7,		//Post a message to the server
+	WaitingMessage = 8, 	//Tell other side to send more messages
+	RegisterChildServer = 9,//Register a child server to the main server
+	UnifiedSync = 10,		//Force synchronize data between all client
 };
 
 // Packet base class, a packet with a PacketSize, PacketID, data, version, and UUID.
@@ -23,7 +27,9 @@ public:
 
 	inline static Packet PacketFromNetworkRecv(SOCKET s) {
 		char* cstr = nullptr;
-		Recv(s, cstr);
+		int len = Recv(s, cstr);
+		if (cstr == nullptr || len <= 0)
+			throw std::runtime_error("PacketFromNetworkRecv: no data received");
 		return Packet(cstr);
 	}
 
@@ -36,22 +42,35 @@ public:
 	/// <param name="packetUUID">UUID</param>
 	/// <param name="packetSize">Data size with head sector</param>
 	Packet(const char* data, unsigned int packetSize = 0, unsigned short packetID = 0, unsigned char packetVersion = 0);
-	Packet(const Packet&) = default;
-	Packet(Packet&&) = default;
+
+	/// <summary>
+	/// default destructor for Packet class
+	/// </summary>
 	virtual ~Packet() = default;
 
-	void SetUUID(uuid::uuid UUID) { PacketUUID = UUID; }; // Set the UUID of the packet
-	virtual std::string GetType() const { return "Packet"; }; // Return the type of the packet
-	unsigned int GetPacketSize() const { return PacketSize; } // Get the size of the packet data
-	unsigned short GetPacketID() const { return PacketID; } // Get the ID of the packet
-	char GetPacketVersion() const { return PacketVersion; } // Get the version of the packet format
-	uuid::uuid GetPacketUUID() const { return PacketUUID; } // Get the UUID of the packet
-	const char* GetRawData() const { return Data; } // Get the raw data of the packet
+	// Set the UUID of the packet
+	void SetUUID(uuid::uuid UUID) { PacketUUID = UUID; }; 
+	// Return the type of the packet
+	virtual std::string GetType() const { return "Packet"; }; 
+	// Get the size of the packet data
+	unsigned int GetPacketSize() const { return PacketSize; };
+	// Get the ID of the packet
+	unsigned short GetPacketID() const { return PacketID; };
+	// Get the version of the packet format
+	char GetPacketVersion() const { return PacketVersion; };
+	// Get the UUID of the packet
+	uuid::uuid GetPacketUUID() const { return PacketUUID; };
+	// Get the raw data of the packet
+	const char* GetRawData() const { return Data; };
 
+	/// <summary>
+	/// default equality operator for Packet class
+	/// </summary>
 	virtual bool operator==(const Packet& other) const
 	{
 		return this->GetType() == other.GetType();
 	}
+	// Return the raw data
 	virtual operator char* () const { return Data; }
 
 	template<typename T>
@@ -76,21 +95,27 @@ public:
 		else
 		{
 			char* newData = new char[PacketSize + sizeof(T)];
-			newData[0] = (PacketSize >> 24) & 0xFF; // Copy PacketSize
+			memcpy(newData, Data, PacketSize); // Copy old data
+			memcpy(newData + PacketSize, &data, sizeof(T)); //Copy new data
+			Data = newData; // Assign new data
+			PacketSize += sizeof(T);
+			// ����ͷ����PacketSize�ֶ�
+			newData[0] = (PacketSize >> 24) & 0xFF;
 			newData[1] = (PacketSize >> 16) & 0xFF;
 			newData[2] = (PacketSize >> 8) & 0xFF;
 			newData[3] = PacketSize & 0xFF;
-			memcpy(newData, Data, PacketSize); // Copy old data
-			memcpy(newData + PacketSize, &data, sizeof(T)); //Copy new data
-			delete[] Data; // Delete old data
-			Data = newData; // Assign new data
-			PacketSize += sizeof(T);
 		}
 	}
 
 	void AddData(const char* data, unsigned int size);
 	void AddData(string str) { AddData(str.c_str(), str.size()); }
 
+	/// <summary>
+	/// Get data from Packet
+	/// </summary>
+	/// <typeparam name="T">any type</typeparam>
+	/// <param name="offset">where you want to start</param>
+	/// <returns>T type value</returns>
 	template<typename T>
 	T GetData(size_t offset = 0) const
 	{
@@ -118,4 +143,5 @@ private:
 	char PacketVersion = 1; //Version of the packet format, 1 for now
 	uuid::uuid PacketUUID; //UUID for the packet, if exist
 };
+
 

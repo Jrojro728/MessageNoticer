@@ -3,6 +3,7 @@
     [
         "boost-uuid",
         "jsoncpp",
-        "log4cplus"
+        "log4cplus",
+        "argh"
     ]
 }

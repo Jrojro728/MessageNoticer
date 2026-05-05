@@ -10,7 +10,7 @@ enum status : uint8_t
 	Offline = 0x02, // maybe the background is offline
 	Logoff = 0x02, //client
 	Full = 0x03, // server is full
-	Buzy = 0x04, // try again later
+	Busy = 0x04, // try again later
 	Maintenance = 0x05, // server is under maintenance
 	Other = 0xff
 };
@@ -83,9 +83,10 @@ class HandshakeAckPacket : public Packet
 class HandshakeErrorPacket : public Packet
 {
 public:
-	HandshakeErrorPacket(const char* reason = NULL) : Packet(PacketType::HandshakeError) 
+	HandshakeErrorPacket(const char* reason = nullptr) : Packet(PacketType::HandshakeError) 
 	{
-		this->AddData(reason ? reason : "Handshake error occurred!", strlen(reason));
+		auto msg = reason ? reason : "Handshake error occurred!";
+		this->AddData(msg, strlen(msg));
 	};
 
 	std::string GetType() const override 
@@ -105,3 +106,4 @@ class HandshakeSuccessPacket : public Packet
 		return "HandshakeSuccessPacket";
 	}
 };
+

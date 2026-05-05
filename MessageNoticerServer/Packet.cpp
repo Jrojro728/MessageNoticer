@@ -18,7 +18,7 @@ Packet::Packet(const char* data, unsigned int packetSize, unsigned short packetI
 		PacketSize = *(unsigned int*)temp;
 		delete[] temp;
 	}
-	
+
 	if (!packetID)
 	{
 		char* temp = new char[2];
@@ -62,17 +62,17 @@ void Packet::AddData(const char* data, unsigned int size)
 	else
 	{
 		unsigned int oldPacketSize = PacketSize;
-		char* newData = new char[oldPacketSize + size + 4];
-		memcpy(newData, Data, oldPacketSize); // 复制旧数据
-		newData[oldPacketSize + 1] = (size >> 24) & 0xFF; // Copy size
-		newData[oldPacketSize + 2] = (size >> 16) & 0xFF;
-		newData[oldPacketSize + 3] = (size >> 8) & 0xFF;
-		newData[oldPacketSize + 4] = size & 0xFF; // 追加新数据的大小
-		memcpy(newData + oldPacketSize + 5, data, size); // 追加新数据
+		unsigned int newSize = size + 4;
+		char* newData = new char[oldPacketSize + newSize];
+		memcpy(newData, Data, oldPacketSize);
+		newData[oldPacketSize + 0] = (size >> 24) & 0xFF;
+		newData[oldPacketSize + 1] = (size >> 16) & 0xFF;
+		newData[oldPacketSize + 2] = (size >> 8) & 0xFF;
+		newData[oldPacketSize + 3] = size & 0xFF;
+		memcpy(newData + oldPacketSize + 4, data, size);
 		delete[] Data;
 		Data = newData;
-		PacketSize = oldPacketSize + size;
-		// 更新头部的PacketSize字段
+		PacketSize = oldPacketSize + newSize;
 		newData[0] = (PacketSize >> 24) & 0xFF;
 		newData[1] = (PacketSize >> 16) & 0xFF;
 		newData[2] = (PacketSize >> 8) & 0xFF;
@@ -96,3 +96,5 @@ const char* Packet::GetData(size_t offset) const
 	memcpy(result, Data + offset + 7 + 4, size); // Copy data from the packet
 	return result;
 }
+
+

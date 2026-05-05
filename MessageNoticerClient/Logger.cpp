@@ -23,3 +23,18 @@ Logger GetLogger(tstring name)
 	logger.addAppender(appender);
 	return logger;
 }
+
+std::string strToHexString(const char* data, size_t len) {
+	std::stringstream ss;
+	ss << std::hex << std::setfill('0'); // 16进制，不足2位补0
+	for (size_t i = 0; i < len; ++i) {
+		// 转换为unsigned char避免符号位问题，再转为整数输出2位16进制
+		ss << std::setw(2) << static_cast<unsigned int>(static_cast<unsigned char>(data[i]));
+		if (i != len - 1) {
+			ss << " "; // 字节间用空格分隔
+		}
+	}
+	return ss.str(); // 返回拼接好的16进制字符串
+}
+
+

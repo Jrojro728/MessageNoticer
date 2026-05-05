@@ -1,11 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <DebuggerFlavor>WindowsRemoteDebugger</DebuggerFlavor>
     <RemoteDebuggerWorkingDirectory>C:\Users\Administrator\Desktop\MessageNoticer\</RemoteDebuggerWorkingDirectory>
     <RemoteDebuggerServerName>120.79.245.194:4026</RemoteDebuggerServerName>
     <DeploymentDirectory>C:\Users\Administrator\Desktop\MessageNoticer\</DeploymentDirectory>
-    <AdditionalFiles>$(ProjectDir)..\$(IntermediateOutputPath)jsoncpp.dll</AdditionalFiles>
+    <AdditionalFiles>$(ProjectDir)..\$(IntermediateOutputPath)jsoncpp.dll;$(ProjectDir)..\$(IntermediateOutputPath)log4cplusD.dll</AdditionalFiles>
     <RemoteDebuggerCommand>C:\Users\Administrator\Desktop\MessageNoticer\MessageNoticerServer.exe</RemoteDebuggerCommand>
     <RemoteDebuggerAttach>false</RemoteDebuggerAttach>
     <RemoteDebuggerDeployCppRuntime>true</RemoteDebuggerDeployCppRuntime>
@@ -29,7 +29,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <RemoteDebuggerWorkingDirectory>C:\Users\Administrator\Desktop\MessageNoticer\</RemoteDebuggerWorkingDirectory>
     <RemoteDebuggerServerName>120.79.245.194:4026</RemoteDebuggerServerName>
-    <DebuggerFlavor>WindowsRemoteDebugger</DebuggerFlavor>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <DeploymentDirectory>\\120.79.245.194\MessageNoticer\</DeploymentDirectory>
     <AdditionalFiles>\\120.79.245.194\MessageNoticer\</AdditionalFiles>
     <RemoteDebuggerCommand>C:\Users\Administrator\Desktop\MessageNoticer\MessageNoticerServer.exe</RemoteDebuggerCommand>

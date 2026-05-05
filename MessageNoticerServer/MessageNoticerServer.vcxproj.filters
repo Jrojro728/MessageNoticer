@@ -30,6 +30,12 @@
     <ClCompile Include="Logger.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="ServerProcess.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Message.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -50,5 +56,22 @@
     <ClInclude Include="Logger.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="ServerProcess.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="NormalPacket.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Message.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="MessageNoticerServer.rc">
+      <Filter>资源文件</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>
