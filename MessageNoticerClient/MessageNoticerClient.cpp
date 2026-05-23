@@ -13,7 +13,7 @@ int main()
 	{
 		InitNetwork();
 		SOCKET sServer = INVALID_SOCKET;
-		if (CreateSocket(sServer, "12306", "120.79.245.194") != 0) {
+		if (CreateSocket(sServer, "12306", "127.0.0.1") != 0) {
 			LOG_FATAL(logger, "Failed to connect server, retrying in 2s...");
 			std::this_thread::sleep_for(std::chrono::seconds(2));
 			continue;
