@@ -53,11 +53,14 @@ jobs:
       uses: lukka/run-vcpkg@v11.6
       id: runvcpkg
       with:
-        vcpkgDirectory: '${{env.GITHUB_WORKSPACE}}/vcpkg'
+        vcpkgDirectory: '${{ github.workspace }}/vcpkg'
         vcpkgGitCommitId: 'aa40adda5352e87655b8583cfb2451d5e9e276fd'
         # Run vcpkg with the command specified by the `runVcpkgFormatString` input.
         runVcpkgInstall: true
         vcpkgJsonGlob: '**/vcpkg.json'
+
+    - name: vcpkg integrate install
+      run: vcpkg integrate install
 
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
