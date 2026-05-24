@@ -28,13 +28,13 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@latest
-    - uses: lukka/get-cmake@latest
+    - uses: actions/checkout@v6.0.2
+    - uses: lukka/get-cmake@v4.3.3
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@latest
+      uses: microsoft/setup-msbuild@v3
 
     - name: Setup vcpkg
-      uses: lukka/run-vcpkg@latest
+      uses: lukka/run-vcpkg@v11.6
       id: runvcpkg
       with:
         vcpkgDirectory: '${{env.GITHUB_WORKSPACE}}/vcpkg'
