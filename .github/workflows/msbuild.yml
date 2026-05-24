@@ -37,7 +37,7 @@ jobs:
       uses: lukka/run-vcpkg@v11.6
       id: runvcpkg
       with:
-        vcpkgDirectory: '${{env.GITHUB_WORKSPACE}}/vcpkg'
+        vcpkgDirectory: '${{ github.workspace }}/vcpkg'
         vcpkgGitCommitId: 'aa40adda5352e87655b8583cfb2451d5e9e276fd'
         # Run vcpkg with the command specified by the `runVcpkgFormatString` input.
         runVcpkgInstall: true
@@ -47,11 +47,11 @@ jobs:
       run: vcpkg integrate install
 
     - name: Restore NuGet packages
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: nuget restore ${{env.SOLUTION_FILE_PATH}}
+      working-directory: ${{ github.workspace }}
+      run: nuget restore ${{ github.workspace }}
 
     - name: Build
-      working-directory: ${{env.GITHUB_WORKSPACE}}
+      working-directory: ${{ github.workspace }}
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
