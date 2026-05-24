@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(MessageNoticer VERSION 1.0.0 LANGUAGES CXX)
+project(MessageNoticer VERSION 0.1.0.2 LANGUAGES CXX)
 
 # ---- Output directory ----
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build)
@@ -10,9 +10,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # ---- Dependencies ----
-find_package(Boost REQUIRED)                 # uuid is header-only
+find_package(Boost REQUIRED COMPONENTS uuid)              # uuid is header-only
 find_package(jsoncpp REQUIRED)
 find_package(log4cplus REQUIRED)
+find_package(argh CONFIG REQUIRED)
 
 # ---- Platform-specific ----
 if(WIN32)
@@ -43,9 +44,10 @@ target_include_directories(MessageNoticerServer PRIVATE
 )
 
 target_link_libraries(MessageNoticerServer PRIVATE
-    Boost::boost
-    jsoncpp_lib
-    log4cplus
+    Boost::uuid
+    JsonCpp::JsonCpp
+    log4cplus::log4cplus
+    argh
     ${PLATFORM_LIBS}
 )
 
@@ -75,9 +77,9 @@ target_include_directories(MessageNoticerClient PRIVATE
 )
 
 target_link_libraries(MessageNoticerClient PRIVATE
-    Boost::boost
-    jsoncpp_lib
-    log4cplus
+    Boost::uuid
+    JsonCpp::JsonCpp
+    log4cplus::log4cplus
     ${PLATFORM_LIBS}
 )
 
