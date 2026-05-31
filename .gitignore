@@ -36,3 +36,4 @@
 /x64
 /vcpkg_installed
 /build
+/out

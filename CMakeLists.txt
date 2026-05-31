@@ -65,6 +65,7 @@ set(CLIENT_SOURCES
     MessageNoticerClient/Logger.cpp
     MessageNoticerClient/Packet.cpp
     MessageNoticerClient/Network.cpp
+    MessageNoticerClient/ClientProcess.cpp
 )
 
 add_executable(MessageNoticerClient ${CLIENT_SOURCES})
