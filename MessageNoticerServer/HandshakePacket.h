@@ -1,24 +1,23 @@
 #pragma once
 #include "Packet.h"
 
-enum status : uint8_t
+enum ServerStatus : uint8_t
 {
 	Online = 0x00, // server is online
-	Ok = 0x00, 
-	Error = 0x01,
+	Ok = 0x00,
+	FatalError = 0x01, // equal to no
 	No = 0x01,
-	Offline = 0x02, // maybe the background is offline
+	Offline = 0x02, // maybe the background service is offline
 	Logoff = 0x02, //client
 	Full = 0x03, // server is full
-	Busy = 0x04, // try again later
-	Maintenance = 0x05, // server is under maintenance
+	Maintenance = 0x04, // server is under maintenance
 	Other = 0xff
 };
 
 class HandshakePacket : public Packet
 {
 public:
-	HandshakePacket(unsigned char ProtocalVersion = 1, const char* ClientName = "Unknown") : Packet(PacketType::HandshakeRequest, ProtocalVersion) {
+	HandshakePacket(const char* ClientName = "Unknown", unsigned char ProtocalVersion = 1) : Packet(PacketType::HandshakeRequest, ProtocalVersion) {
 		Json::FastWriter Writer;
 		Json::Value Root;
 		Root["fastmessage"] = "Hello from client!";
@@ -35,7 +34,7 @@ public:
 class HandshakeInfoPacket : public Packet
 {
 public:
-	HandshakeInfoPacket(string ServerName, string Version, int maxUser, int UserNow, unsigned char ProtocalVersion = 1, uint8_t status = Online) : Packet(PacketType::HandshakeInfo, ProtocalVersion) 
+	HandshakeInfoPacket(string ServerName, string Version, int maxUser, int UserNow, unsigned char ProtocalVersion = 1, uint8_t status = ServerStatus::Online) : Packet(PacketType::HandshakeInfo, ProtocalVersion)
 	{
 		Json::FastWriter Writer;
 		Json::Value Root;
@@ -64,7 +63,7 @@ public:
 
 class HandshakeAckPacket : public Packet
 {
-	public:
+public:
 	HandshakeAckPacket(const char* ClientName = "Unknown", uint8_t status = 0, unsigned char ProtocalVersion = 1) : Packet(PacketType::HandshakeAck, ProtocalVersion)
 	{
 		Json::FastWriter Writer;
@@ -83,13 +82,13 @@ class HandshakeAckPacket : public Packet
 class HandshakeErrorPacket : public Packet
 {
 public:
-	HandshakeErrorPacket(const char* reason = nullptr) : Packet(PacketType::HandshakeError) 
+	HandshakeErrorPacket(const char* reason = nullptr, unsigned char ProtocalVersion = 1) : Packet(PacketType::HandshakeError, ProtocalVersion)
 	{
 		auto msg = reason ? reason : "Handshake error occurred!";
 		this->AddData(msg, strlen(msg));
 	};
 
-	std::string GetType() const override 
+	std::string GetType() const override
 	{
 		return "HandshakeErrorPacket";
 	}
@@ -97,8 +96,8 @@ public:
 
 class HandshakeSuccessPacket : public Packet
 {
-	public:
-	HandshakeSuccessPacket() : Packet(PacketType::HandshakeSuccess) {
+public:
+	HandshakeSuccessPacket(unsigned char ProtocalVersion = 1) : Packet(PacketType::HandshakeSuccess, ProtocalVersion) {
 		this->AddData(Ok);
 	};
 

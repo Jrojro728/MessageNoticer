@@ -2,53 +2,33 @@
 #include "pch.h"
 #include "Network.h"
 #include "Logger.h"
-#include "HandshakePacket.h"
+#include "ClientProcess.h"
 
 int main()
 {
 	log4cplus::Initializer init;
 	Logger logger = GetLogger("main");
 
-	for (;;)
-	{
-		InitNetwork();
-		SOCKET sServer = INVALID_SOCKET;
+	bool isInitReady = false;
+	InitNetwork();
+	SOCKET sServer = INVALID_SOCKET;
+	do {
 		if (CreateSocket(sServer, "12306", "127.0.0.1") != 0) {
 			LOG_FATAL(logger, "Failed to connect server, retrying in 2s...");
 			std::this_thread::sleep_for(std::chrono::seconds(2));
 			continue;
 		}
+		isInitReady = true;
+	} while (!isInitReady);
 
-		Json::Reader Reader;
-		Json::Value Root;
-
-		char randStr[8];
-		snprintf(randStr, sizeof(randStr), "%d", rand() % 100000);
-		HandshakePacket(1, "TestClient").Send(sServer);
-
+	for (;;)
+	{
 		try
 		{
-			Packet Received = Packet::PacketFromNetworkRecv(sServer);
-			if (Received.GetPacketID() == PacketType::HandshakeError)
-				LOG_FATAL(logger, "Handshake error from server: " << Received.GetRawData());
-
-			if (!(Reader.parse(Received.GetData(), Root, false)))
-				LOG_FATAL(logger, "Invalid handshake response from server.");
-
-			if (Root["info"]["maxuser"].asInt() - Root["info"]["useronline"].asInt() < 1)
-				HandshakeAckPacket("no", No).Send(sServer);
-
-			HandshakeAckPacket(randStr, Ok).Send(sServer);
-
-			if (Packet::PacketFromNetworkRecv(sServer).GetPacketID() == HandshakeSuccess)
-			{
-				LOG_INFO(logger, "Connected to server: "
-					<< Root["info"]["name"].asString()
-					<< " Version: " << Root["info"]["version"].asString()
-					<< " Protocol: " << Root["info"]["protocol"].asUInt());
-			}
 			std::this_thread::sleep_for(std::chrono::seconds(1));
-
+			HandshakeProcess(sServer);
+			NormalProcess(sServer);
+			break;
 		}
 		catch (const std::exception& e)
 		{
@@ -61,12 +41,11 @@ int main()
 			std::this_thread::sleep_for(std::chrono::seconds(2));
 			continue;
 		}
-
-		CloseSocket(sServer);
-#ifdef _WIN32
-		WSACleanup();
-#endif
 	}
+	CloseSocket(sServer);
+#ifdef _WIN32
+	WSACleanup();
+#endif
 	return 0;
 }
 

@@ -15,9 +15,12 @@ enum PacketType : uint16_t
 	WaitingMessage = 8, 	//Tell other side to send more messages
 	RegisterChildServer = 9,//Register a child server to the main server
 	UnifiedSync = 10,		//Force synchronize data between all client
+	GetClientList = 11,		//Get the list of client at the specified level
 };
 
-// Packet base class, a packet with a PacketSize, PacketID, data, version, and UUID.
+// Packet base class, a self-buffered packet with automatic memory management.
+// The buffer layout is: [PacketSize(4B)][PacketID(2B)][PacketVersion(1B)][payload...]
+// All sizes in header are in big-endian (network byte order).
 class Packet
 {
 public:
@@ -25,43 +28,30 @@ public:
 	Packet() = default;
 	Packet(unsigned short packetID, unsigned char packetVersion = 0) : PacketID(packetID), PacketVersion(packetVersion) {};
 
-	inline static Packet PacketFromNetworkRecv(SOCKET s) {
-		char* cstr = nullptr;
-		int len = Recv(s, cstr);
-		if (cstr == nullptr || len <= 0)
-			throw std::runtime_error("PacketFromNetworkRecv: no data received");
-		return Packet(cstr);
-	}
+	/// Construct from a received network buffer (moves ownership).
+	explicit Packet(std::vector<char> buffer);
 
-	/// <summary>
-	/// recommended constructor for Packet class
-	/// </summary>
-	/// <param name="packetID">Packet's ID</param>
-	/// <param name="data">Packet's raw data</param>
-	/// <param name="packetVersion">Packet format version</param>
-	/// <param name="packetUUID">UUID</param>
-	/// <param name="packetSize">Data size with head sector</param>
-	Packet(const char* data, unsigned int packetSize = 0, unsigned short packetID = 0, unsigned char packetVersion = 0);
+	/// Factory: receive a complete packet from a socket.
+	inline static Packet PacketFromNetworkRecv(SOCKET s) {
+		std::vector<char> buf;
+		int len = Recv(s, buf);
+		if (buf.empty() || len <= 0)
+			throw std::runtime_error("PacketFromNetworkRecv: no data received");
+		return Packet(std::move(buf));
+	}
 
 	/// <summary>
 	/// default destructor for Packet class
 	/// </summary>
 	virtual ~Packet() = default;
 
-	// Set the UUID of the packet
-	void SetUUID(uuid::uuid UUID) { PacketUUID = UUID; }; 
-	// Return the type of the packet
-	virtual std::string GetType() const { return "Packet"; }; 
-	// Get the size of the packet data
-	unsigned int GetPacketSize() const { return PacketSize; };
-	// Get the ID of the packet
-	unsigned short GetPacketID() const { return PacketID; };
-	// Get the version of the packet format
-	char GetPacketVersion() const { return PacketVersion; };
-	// Get the UUID of the packet
-	uuid::uuid GetPacketUUID() const { return PacketUUID; };
-	// Get the raw data of the packet
-	const char* GetRawData() const { return Data; };
+	void SetUUID(uuid::uuid UUID) { PacketUUID = UUID; }
+	virtual std::string GetType() const { return "Packet"; }
+	size_t GetPacketSize() const { return Data.size(); }
+	unsigned short GetPacketID() const { return PacketID; }
+	char GetPacketVersion() const { return PacketVersion; }
+	uuid::uuid GetPacketUUID() const { return PacketUUID; }
+	const char* GetRawData() const { return Data.data(); }
 
 	/// <summary>
 	/// default equality operator for Packet class
@@ -70,78 +60,64 @@ public:
 	{
 		return this->GetType() == other.GetType();
 	}
-	// Return the raw data
-	virtual operator char* () const { return Data; }
 
+	// Get a pointer to the raw buffer (including header).
+	operator const char* () const { return Data.data(); }
+
+	/// Append a POD value to the payload.
 	template<typename T>
 	void AddData(const T& data)
 	{
-		if (Data == nullptr)
+		size_t oldSize = Data.size();
+		if (oldSize == 0)
 		{
-			char* newData = new char[sizeof(T) + 7]; // 7 bytes for header (PacketSize, PacketID, PacketVersion)
-			PacketSize = sizeof(T) + 7; // Set new PacketSize
-
-			newData[0] = (PacketSize >> 24) & 0xFF; // Copy PacketSize
-			newData[1] = (PacketSize >> 16) & 0xFF;
-			newData[2] = (PacketSize >> 8) & 0xFF;
-			newData[3] = PacketSize & 0xFF;
-			newData[4] = (PacketID >> 8) & 0xFF; // Copy PacketID
-			newData[5] = PacketID & 0xFF;
-			newData[6] = PacketVersion & 0xFF; // Copy PacketVersion
-			memcpy(newData + 7, &data, sizeof(T)); // Copy data
-			delete[] Data; // Delete old data
-			Data = newData; // Assign new data
+			Data.resize(7 + sizeof(T));
+			WriteHeader();
+			std::memcpy(Data.data() + 7, &data, sizeof(T));
 		}
 		else
 		{
-			char* newData = new char[PacketSize + sizeof(T)];
-			memcpy(newData, Data, PacketSize); // Copy old data
-			memcpy(newData + PacketSize, &data, sizeof(T)); //Copy new data
-			Data = newData; // Assign new data
-			PacketSize += sizeof(T);
-			// ����ͷ����PacketSize�ֶ�
-			newData[0] = (PacketSize >> 24) & 0xFF;
-			newData[1] = (PacketSize >> 16) & 0xFF;
-			newData[2] = (PacketSize >> 8) & 0xFF;
-			newData[3] = PacketSize & 0xFF;
+			Data.resize(oldSize + sizeof(T));
+			std::memcpy(Data.data() + oldSize, &data, sizeof(T));
+			WriteHeader();
 		}
 	}
 
+	/// Append a length-prefixed data block to the payload.
 	void AddData(const char* data, unsigned int size);
-	void AddData(string str) { AddData(str.c_str(), str.size()); }
+	void AddData(const std::string& str) { AddData(str.data(), (unsigned int)str.size()); }
 
-	/// <summary>
-	/// Get data from Packet
-	/// </summary>
-	/// <typeparam name="T">any type</typeparam>
-	/// <param name="offset">where you want to start</param>
-	/// <returns>T type value</returns>
+	/// Extract a POD value from the payload at the given offset.
 	template<typename T>
 	T GetData(size_t offset = 0) const
 	{
-		if (Data == nullptr || PacketSize < sizeof(T) + 7)
+		if (Data.size() < 7 + sizeof(T) + offset)
 			throw std::runtime_error("Packet data is not valid or too small to retrieve data.");
 		T result{};
-		memcpy(&result, Data + offset + 7, sizeof(T)); // Copy data from the packet
+		std::memcpy(&result, Data.data() + 7 + offset, sizeof(T));
 		return result;
 	}
 
-	string GetString(size_t offset = 0) const { return std::string(GetData(offset)); };
-	const char* GetData(size_t offset = 0) const;
+	/// Get a pointer to the payload sub-block at offset.
+	/// The returned pointer is valid as long as the Packet object is alive.
+	string GetData(size_t offset = 0) const;
 
+	/// Send the complete packet (including header) to a socket.
 	int Send(SOCKET s) const
 	{
-		if (Data == nullptr || PacketSize == 0)
-			return 0; // No data to send
-		return ::Send(s, Data, PacketSize); // Send the packet data
+		if (Data.empty())
+			return 0;
+		return ::Send(s, Data.data(), (int)Data.size());
 	}
 
 private:
-	unsigned short PacketID = 0; //Packet ID for packet's format
-	char* Data = nullptr; //Pointer to the data of the packet
-	unsigned int PacketSize = 0; //Size of the packet data
-	char PacketVersion = 1; //Version of the packet format, 1 for now
-	uuid::uuid PacketUUID; //UUID for the packet, if exist
+	/// Write the 7-byte header at the front of Data, using big-endian byte order.
+	void WriteHeader();
+
+	unsigned short PacketID = 0;
+	char PacketVersion = 1;
+	std::vector<char> Data;
+	uuid::uuid PacketUUID;
 };
 
 

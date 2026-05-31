@@ -1,4 +1,4 @@
-// Network.h ¡ªPlatform-agnostic socket abstraction.
+// Network.h â€”Platform-agnostic socket abstraction.
 #pragma once
 #include "pch.h"
 #include "Logger.h"
@@ -41,10 +41,10 @@ int InitNetwork();
 int CreateSocket(SOCKET& s, const char* port, const char* address);
 
 /// Receive data from a socket.
-/// Allocates DataBuffer (caller must delete[] it).
+/// Fills DataBuffer (RAII, no manual cleanup needed).
 /// Returns bytes received, 0 for graceful close, SOCKET_ERROR on failure.
 /// On the server side, throws ClientSocketClosedException on close/error.
-int Recv(SOCKET& s, char*& DataBuffer);
+int Recv(SOCKET& s, std::vector<char>& DataBuffer);
 
 /// Send a fixed-size buffer.
 int Send(SOCKET& s, const char* DataBuffer, int Size);
@@ -52,6 +52,5 @@ int Send(SOCKET& s, const char* DataBuffer, int Size);
 /// Send a null-terminated string.
 int Send(SOCKET& s, const char* DataBuffer);
 
-/// Reverse byte order of a range (little-endian â†?big-endian).
+/// Reverse byte order of a range
 void EndianSwap(char* pData, unsigned int startIndex, unsigned int length);
-

@@ -37,4 +37,3 @@ std::string strToHexString(const char* data, size_t len) {
 	return ss.str(); // 返回拼接好的16进制字符串
 }
 
-

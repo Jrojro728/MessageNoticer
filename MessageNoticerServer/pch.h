@@ -59,4 +59,3 @@ using std::string;
 using namespace log4cplus;
 
 #endif //PCH_H
-

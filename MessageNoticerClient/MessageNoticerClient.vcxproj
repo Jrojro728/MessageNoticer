@@ -160,6 +160,7 @@
   <ItemGroup>
     <ClCompile Include="..\MessageNoticerServer\Network.cpp" />
     <ClCompile Include="..\MessageNoticerServer\Packet.cpp" />
+    <ClCompile Include="ClientProcess.cpp" />
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="MessageNoticerClient.cpp" />
     <ClCompile Include="pch.cpp">
@@ -171,8 +172,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\MessageNoticerServer\Network.h" />
+    <ClInclude Include="ClientProcess.h" />
     <ClInclude Include="HandshakePacket.h" />
     <ClInclude Include="Logger.h" />
+    <ClInclude Include="NormalPacket.h" />
     <ClInclude Include="Packet.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />

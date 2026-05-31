@@ -112,13 +112,16 @@ int CreateSocket(SOCKET& s, const char* port, const char* address)
     return 0;
 }
 
-int Recv(SOCKET& s, char*& DataBuffer)
+int Recv(SOCKET& s, std::vector<char>& DataBuffer)
 {
-    int result = recv(s, TempDataBuffer.data(), (int)TempDataBuffer.size(), MSG_PEEK);
+    static std::vector<char> peekBuffer(65536);
+
+    int result = recv(s, peekBuffer.data(), (int)peekBuffer.size(), MSG_PEEK);
 
     if (result == SOCKET_ERROR)
     {
 #ifdef SERVER_APP
+        DataBuffer.clear();
         throw ClientSocketClosedException();
 #else
         return SOCKET_ERROR;
@@ -127,7 +130,7 @@ int Recv(SOCKET& s, char*& DataBuffer)
 
     if (result == 0)
     {
-        DataBuffer = new char[1]();
+        DataBuffer.clear();
 #ifdef SERVER_APP
         throw ClientSocketClosedException();
 #else
@@ -135,21 +138,23 @@ int Recv(SOCKET& s, char*& DataBuffer)
 #endif
     }
 
-    if (result > (int)TempDataBuffer.size())
-        TempDataBuffer.resize(result + 65536);
+    if (result > (int)peekBuffer.size())
+        peekBuffer.resize(result + 65536);
 
-    DataBuffer = new char[result + 1]();
-    result = recv(s, DataBuffer, result, 0);
+    DataBuffer.resize(result);
+    result = recv(s, DataBuffer.data(), result, 0);
 
     if (result == SOCKET_ERROR || result == 0)
     {
+        DataBuffer.clear();
 #ifdef SERVER_APP
         throw ClientSocketClosedException();
 #endif
+        return result;
     }
 
 #ifdef _DEBUG
-    LOG_DEBUG(NetworkLogger, s << "sent: " << strToHexString(DataBuffer, result));
+    LOG_DEBUG(NetworkLogger, s << "sent: " << strToHexString(DataBuffer.data(), result));
 #endif
 
     return result;

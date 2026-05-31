@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
 	std::string serverName = "MessageNoticer";
 	cmdl({ "-n", "--name" }) >> serverName;
 
-	std::string version = "1.0";
+	std::string version = "0.1.0.2";
 	cmdl({ "-v", "--version" }) >> version;
 
 	int maxUsers = 64;
@@ -106,27 +106,35 @@ int main(int argc, char* argv[])
 			// ---- New connection ----
 			if (s == sListen)
 			{
+				// Accept the new connection
 				SOCKET c = accept(s, NULL, NULL);
 				if (c == INVALID_SOCKET) {
 					LOG_ERROR(logger, "accept() failed: " << GetSocketError());
 					continue;
 				}
+				// Check if the server is full
 				if (ClientList.size() >= (size_t)maxUsers) {
 					LOG_ERROR(logger, "max clients (" << maxUsers << ") reached.");
 					CloseSocket(c);
 					continue;
 				}
+				// Add new client to client list and select set
 				FD_SET(c, &readset);
 				if (c > maxSock) maxSock = c;
 				LOG_INFO(logger, c << " try to login.");
+				ClientList.push_back(Client(c, uuid::nil_uuid(), "", ClientStatus::Handshaking));
 				continue;
 			}
 
 			// ---- Client data ----
 			try {
-				ret = HandshakeProcess(s, ClientList);
+				uint8_t status = std::find(ClientList.begin(), ClientList.end(), Client(s))->GetClientStatus();
+				//Check status to decide whether to call HandshakeProcess or NormalProcess, if the client is still handshaking, call HandshakeProcess, otherwise call NormalProcess
+				if (status == Handshaking)
+					ret = HandshakeProcess(s, ClientList);
+				if (status == Ready || status == Waiting)
+					ret = NormalProcess(s, ClientList);
 				if (ret == 1) continue;
-				ret = NormalProcess(s, ClientList);
 			}
 			catch (ClientSocketClosedException&) {
 				LOG_INFO(logger, s << " logged off.");
@@ -139,8 +147,7 @@ int main(int argc, char* argv[])
 							maxSock = cl.GetSocket();
 				}
 				if (!ClientList.empty())
-					ClientList.erase(
-						std::find(ClientList.begin(), ClientList.end(), Client(s)));
+					ClientList.erase(std::find(ClientList.begin(), ClientList.end(), Client(s)));
 			}
 		}
 	}

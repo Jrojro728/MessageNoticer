@@ -11,7 +11,8 @@ enum class MessagePriority : uint8_t
 	Low = 0,  // Informational, no action needed
 	Normal = 1,  // Default ¡ªstandard communication
 	High = 2,	// Requires attention
-	Urgent = 3   // Time-sensitive, needs immediate handling
+	Urgent = 3 ,  // Time-sensitive, needs immediate handling
+	None = 255 // Special value to indicate no messages
 };
 
 class Message
@@ -91,6 +92,7 @@ public:
 	void SetContent(string content) { Content = std::move(content); };
 	void SetPriority(MessagePriority priority) { Priority = priority; };
 	void SetReceiver(Client receiver) { Receiver = receiver; };
+	void SetUUID(uuid::uuid uuid) { MessageUUID = uuid; };
 
 private:
 	std::string Title;                           // Message title / subject

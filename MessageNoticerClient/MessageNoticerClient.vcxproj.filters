@@ -30,6 +30,9 @@
     <ClCompile Include="Logger.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="ClientProcess.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -48,6 +51,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ClientProcess.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="NormalPacket.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

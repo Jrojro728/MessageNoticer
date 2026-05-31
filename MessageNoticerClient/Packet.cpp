@@ -1,101 +1,76 @@
 #include "pch.h"
 #include "Packet.h"
 
-Packet::Packet(const char* data, unsigned int packetSize, unsigned short packetID, unsigned char packetVersion)
+Packet::Packet(std::vector<char> buffer)
+	: Data(std::move(buffer))
 {
-	this->Data = const_cast<char *>(data);
-	this->PacketVersion = packetVersion;
-	this->PacketSize = packetSize;
-	this->PacketID = packetID;
-	this->PacketUUID = uuid::nil_uuid(); // Initialize with nil UUID
+	this->PacketUUID = uuid::nil_uuid();
 
-	// If the data of header sector are not provided, it will be extracted from the data array
-	if (!packetSize)
-	{
-		char* temp = new char[4];
-		memcpy(temp, data, 4); // Copy first 4 bytes for PacketSize
-		EndianSwap(temp, 0, 4); // Swap endianness for PacketSize
-		PacketSize = *(unsigned int*)temp;
-		delete[] temp;
-	}
+	// Parse header from the buffer.
+	// The first 4 bytes are PacketSize (big-endian), but we already have that from Data.size().
+	if (Data.size() < 7)
+		throw std::runtime_error("Packet: buffer too small for header.");
 
-	if (!packetID)
-	{
-		char* temp = new char[2];
-		memcpy(temp, data + 4, 2); // Copy the ID bytes
-		EndianSwap(temp, 0, 2); // Swap endianness for PacketID
-		PacketID = *(unsigned short*)temp;
-		delete[] temp;
-	}
+	PacketID = ((unsigned char)Data[4] << 8) | (unsigned char)Data[5];
+	PacketVersion = Data[6];
+}
 
-	if (!packetVersion)
-	{
-		char* temp = new char[1];
-		memcpy(temp, data + 6, 1); // Copy the version byte
-		EndianSwap(temp, 0, 1); // Swap endianness for PacketVersion
-		PacketVersion = *(unsigned char*)temp;
-		delete[] temp;
-	}
+void Packet::WriteHeader()
+{
+	uint32_t netSize = (uint32_t)Data.size();
+	// Big-endian: MSB first
+	Data[0] = (char)(netSize >> 24);
+	Data[1] = (char)(netSize >> 16);
+	Data[2] = (char)(netSize >> 8);
+	Data[3] = (char)(netSize);
+	Data[4] = (char)(PacketID >> 8);
+	Data[5] = (char)(PacketID);
+	Data[6] = PacketVersion;
 }
 
 void Packet::AddData(const char* data, unsigned int size)
 {
-	if (Data == nullptr)
+	size_t oldSize = Data.size();
+	size_t entrySize = 4 + size; // 4-byte size prefix + actual data
+
+	if (oldSize == 0)
 	{
-		char* newData = new char[size + 7 + 4]; // 7 bytes for header (PacketSize, PacketID, PacketVersion) + 4 bytes for Data size
-		PacketSize = size + 7 + 4; // Set new PacketSize
-		newData[0] = (PacketSize >> 24) & 0xFF; // Copy PacketSize
-		newData[1] = (PacketSize >> 16) & 0xFF;
-		newData[2] = (PacketSize >> 8) & 0xFF;
-		newData[3] = PacketSize & 0xFF;
-		newData[4] = (PacketID >> 8) & 0xFF; // Copy PacketID
-		newData[5] = PacketID & 0xFF;
-		newData[6] = PacketVersion & 0xFF; // Copy PacketVersion
-		newData[7] = (size >> 24) & 0xFF; // Copy size
-		newData[8] = (size >> 16) & 0xFF;
-		newData[9] = (size >> 8) & 0xFF;
-		newData[10] = size & 0xFF;
-		memcpy(newData + 11, data, size); // Copy data
-		delete[] Data; // Delete old data
-		Data = newData; // Assign new data
+		Data.resize(7 + entrySize);
+		WriteHeader();
+		Data[7] = (char)(size >> 24);
+		Data[8] = (char)(size >> 16);
+		Data[9] = (char)(size >> 8);
+		Data[10] = (char)(size);
+		std::memcpy(Data.data() + 11, data, size);
 	}
 	else
 	{
-		unsigned int oldPacketSize = PacketSize;
-		unsigned int newSize = size + 4;
-		char* newData = new char[oldPacketSize + newSize];
-		memcpy(newData, Data, oldPacketSize);
-		newData[oldPacketSize + 0] = (size >> 24) & 0xFF;
-		newData[oldPacketSize + 1] = (size >> 16) & 0xFF;
-		newData[oldPacketSize + 2] = (size >> 8) & 0xFF;
-		newData[oldPacketSize + 3] = size & 0xFF;
-		memcpy(newData + oldPacketSize + 4, data, size);
-		delete[] Data;
-		Data = newData;
-		PacketSize = oldPacketSize + newSize;
-		newData[0] = (PacketSize >> 24) & 0xFF;
-		newData[1] = (PacketSize >> 16) & 0xFF;
-		newData[2] = (PacketSize >> 8) & 0xFF;
-		newData[3] = PacketSize & 0xFF;
+		Data.resize(oldSize + entrySize);
+		Data[oldSize + 0] = (char)(size >> 24);
+		Data[oldSize + 1] = (char)(size >> 16);
+		Data[oldSize + 2] = (char)(size >> 8);
+		Data[oldSize + 3] = (char)(size);
+		std::memcpy(Data.data() + oldSize + 4, data, size);
+		WriteHeader();
 	}
 }
 
-const char* Packet::GetData(size_t offset) const
+string Packet::GetData(size_t offset) const
 {
-	if (Data == nullptr || PacketSize < 7 + 5 + offset)
-		throw std::runtime_error("Packet data is not valid or too small to retrieve data.");
-	char* result = new char[PacketSize - 7];
-	char* temp = new char[5];
-	memset(result, 0, PacketSize - 7);
-	memset(temp, 0, 5);
-	memcpy(temp, Data + offset + 7, 4); // Copy size from the packet
-	EndianSwap(temp, 0, 4); // Swap endianness for size
-	unsigned int size = *(unsigned int*)temp;
-	if (size + 7 + 4 > PacketSize)
-		throw std::runtime_error("Packet data is not valid or too small to retrieve data.");
-	memcpy(result, Data + offset + 7 + 4, size); // Copy data from the packet
+	// The payload at Data[7 + offset] starts with a 4-byte length (big-endian)
+	// followed by that many bytes of string data
+	if (Data.size() < 7 + 4 + offset)
+		throw std::runtime_error("Packet data is invalid or too small to retrieve data.");
+
+	uint32_t subSize =
+		((unsigned char)Data[7 + offset] << 24) |
+		((unsigned char)Data[8 + offset] << 16) |
+		((unsigned char)Data[9 + offset] << 8) |
+		(unsigned char)Data[10 + offset];
+
+	if (7 + 4 + subSize + offset > Data.size())
+		throw std::runtime_error("Packet data is invalid or too small to retrieve data.");
+
+	string result(Data.data() + 7 + 4 + offset, subSize);
 	return result;
 }
-
-
-

@@ -22,8 +22,12 @@
 #include <thread>
 #include <chrono>
 #include <format>
+#include <ctime>
 #include <cstring>
 #include <cstdint>
+#include <csignal>
+#include <mutex>
+#include <queue>
 
 // Platform-specific socket headers
 #ifdef _WIN32
@@ -48,10 +52,10 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <json/json.h>
 #include <log4cplus/log4cplus.h>
+#include <argh.h>
 
 namespace uuid = ::boost::uuids;
 using std::string;
 using namespace log4cplus;
 
 #endif //PCH_H
-
