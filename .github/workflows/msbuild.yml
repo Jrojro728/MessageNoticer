@@ -28,17 +28,17 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - uses: lukka/get-cmake@latest
+    - uses: actions/checkout@v6.0.2
+    - uses: lukka/get-cmake@v4.3.3
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
+      uses: microsoft/setup-msbuild@v3
 
     - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
+      uses: lukka/run-vcpkg@v11.6
       id: runvcpkg
       with:
-        vcpkgDirectory: '${{env.GITHUB_WORKSPACE}}/vcpkg'
-        vcpkgGitCommitId: '74e6536215718009aae747d86d84b78376bf9e09'
+        vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+        vcpkgGitCommitId: 'aa40adda5352e87655b8583cfb2451d5e9e276fd'
         # Run vcpkg with the command specified by the `runVcpkgFormatString` input.
         runVcpkgInstall: true
         vcpkgJsonGlob: '**/vcpkg.json'
@@ -47,11 +47,11 @@ jobs:
       run: vcpkg integrate install
 
     - name: Restore NuGet packages
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: nuget restore ${{env.SOLUTION_FILE_PATH}}
+      working-directory: ${{ github.workspace }}
+      run: nuget restore ${{ github.workspace }}
 
     - name: Build
-      working-directory: ${{env.GITHUB_WORKSPACE}}
+      working-directory: ${{ github.workspace }}
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
