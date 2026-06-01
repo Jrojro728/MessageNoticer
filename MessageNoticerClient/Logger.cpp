@@ -3,24 +3,28 @@
 
 Logger GetLogger(tstring name)
 {
-	//第1步：建立ConsoleAppender
-	SharedAppenderPtr appender(new log4cplus::ConsoleAppender());
-
-	//第2步：设置Appender的名称和输出格式（SimpleLayout）
-	appender->setName(LOG4CPLUS_TEXT("console"));
-
-	tstring pattern = LOG4CPLUS_TEXT("%D{%y/%m/%d %H:%M:%S.%q} [%t] %-5p %c - %m [%F:%L]%n");
-	appender->setLayout(std::unique_ptr<log4cplus::Layout>(new log4cplus::PatternLayout(pattern)));
-
-	//第3步：得到一个Logger实例，并设置其日志输出等级阈值
 	Logger logger = log4cplus::Logger::getInstance(name);
+
+	// Only add a ConsoleAppender once per logger (skip if already configured).
+	// 防止多次添加Appender导致日志重复输出
+	if (logger.getAllAppenders().size() == 0)
+	{
+		// Create a ConsoleAppender and set its layout
+		SharedAppenderPtr appender(new log4cplus::ConsoleAppender());
+		appender->setName(LOG4CPLUS_TEXT("console"));
+
+		//set pattern: date/time, thread id, log level, logger name, message, source file and line number
+		tstring pattern = LOG4CPLUS_TEXT("%D{%y/%m/%d %H:%M:%S.%q} [%t] %-5p %c - %m [%F:%L]%n");
+		appender->setLayout(std::unique_ptr<log4cplus::Layout>(new log4cplus::PatternLayout(pattern)));
+
 #ifdef _DEBUG
-	logger.setLogLevel(log4cplus::DEBUG_LOG_LEVEL);
+		logger.setLogLevel(log4cplus::DEBUG_LOG_LEVEL);
 #else
-	logger.setLogLevel(log4cplus::INFO_LOG_LEVEL);
-#endif // DEBUG
-	//第4步：为Logger实例添加ConsoleAppender
-	logger.addAppender(appender);
+		logger.setLogLevel(log4cplus::INFO_LOG_LEVEL);
+#endif
+		logger.addAppender(appender);
+	}
+
 	return logger;
 }
 

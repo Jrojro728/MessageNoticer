@@ -5,7 +5,6 @@
 #include "pch.h"
 #include "Network.h"
 #include "Client.h"
-#include "HandshakePacket.h"
 #include "ServerProcess.h"
 #include "Message.h"
 using std::cout, std::endl, std::cerr;
