@@ -34,15 +34,15 @@ int main(int argc, char* argv[])
 	std::string serverName = "MessageNoticer";
 	cmdl({ "-n", "--name" }) >> serverName;
 
-	std::string version = "0.1.0.2";
+	std::string version = "0.1.0.3";
 	cmdl({ "-v", "--version" }) >> version;
 
 	int maxUsers = 64;
 	cmdl({ "-m", "--max" }) >> maxUsers;
 
 	// ---- Init ----
-	InitNetwork();
 	log4cplus::Initializer initializer;
+	InitNetwork();
 	Logger logger = GetLogger(LOG4CPLUS_TEXT("main"));
 	LOG_INFO(logger, serverName << " v" << version
 		<< " starting on port " << port);

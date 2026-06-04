@@ -16,6 +16,7 @@ enum PacketType : uint16_t
 	RegisterChildServer = 9,//Register a child server to the main server
 	UnifiedSync = 10,		//Force synchronize data between all client
 	GetClientList = 11,		//Get the list of client at the specified level
+	SendClientList = 12,	//Send the list of client to the other side
 };
 
 // Packet base class, a self-buffered packet with automatic memory management.
@@ -119,5 +120,3 @@ private:
 	std::vector<char> Data;
 	uuid::uuid PacketUUID;
 };
-
-

@@ -39,3 +39,40 @@ public:
 	}
 };
 
+class RegisterChildServerPacket : public Packet
+{
+public:
+	RegisterChildServerPacket(const char* ServerName, const char* ServerAddress, int port = 12306, int maxUser = 64, unsigned char PacketVersion = 1)
+		: Packet(PacketType::RegisterChildServer, PacketVersion)
+	{
+		Json::FastWriter Writer;
+		Json::Value Root;
+		Root["name"] = ServerName;
+		Root["address"] = ServerAddress;
+		Root["port"] = port;
+		Root["maxUser"] = maxUser;
+		std::string description = Writer.write(Root);
+		this->AddData(description.c_str(), description.size());
+	};
+
+	std::string GetType() const override
+	{
+		return "RegisterChildServerPacket";
+	}
+};
+
+class UnifiedSync : public Packet
+{
+public:
+	UnifiedSync(const char* syncInfo, unsigned char PacketVersion = 1)
+		: Packet(PacketType::UnifiedSync, PacketVersion)
+	{
+		Json::FastWriter Writer;
+		Json::Value Root;
+		Root["info"] = syncInfo;
+		Root["timestamp"] = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		string description = Writer.write(Root);
+		this->AddData(description.c_str(), description.size());
+	};
+
+};

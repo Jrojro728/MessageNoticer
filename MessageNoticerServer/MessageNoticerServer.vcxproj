@@ -175,7 +175,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Logger.cpp" />
-    <ClCompile Include="Message.cpp" />
     <ClCompile Include="MessageNoticerServer.cpp" />
     <ClCompile Include="Network.cpp" />
     <ClCompile Include="Packet.cpp" />
@@ -189,6 +188,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Client.h" />
+    <ClInclude Include="Content.h" />
     <ClInclude Include="HandshakePacket.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="Message.h" />
@@ -204,6 +204,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\MessageNoticerClient\icon1.ico" />
+    <Image Include="icon1.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

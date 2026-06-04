@@ -75,7 +75,7 @@ int NormalProcess(SOCKET& sSelected, std::vector<Client>& ClientList)
 			/*Json::Reader Reader;
 			Json::Value Root;*/
 			Temp.SetUUID(temp.GetData<uuid::uuid>()); // Get the message's ID
-			LOG_DEBUG(logger, "Message UUID: " << Temp.GetMessageUUID()); //为什么log会输出两次？ <TODO>解决这个问题
+			LOG_DEBUG(logger, "Message UUID: " << Temp.GetMessageUUID()); 
 			LOG_DEBUG(logger, "Message content: " << temp.GetData(sizeof(uuid::uuid)));
 			/*if (!Reader.parse(temp.GetData(sizeof(uuid::uuid)), Root, false))
 			{
@@ -83,6 +83,12 @@ int NormalProcess(SOCKET& sSelected, std::vector<Client>& ClientList)
 				break;
 			}
 			LOG_DEBUG(logger, "Message content: " << Root["content"].asString()); */
+			break;
+		}
+		case PacketType::GetClientList: // GetClientListPacket
+		{
+			LOG_DEBUG(logger, "Received GetClientListPacket from client " << sSelected);
+			
 			break;
 		}
 		default:

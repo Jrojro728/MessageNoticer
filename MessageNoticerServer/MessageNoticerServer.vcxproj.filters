@@ -33,9 +33,6 @@
     <ClCompile Include="ServerProcess.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Message.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -68,6 +65,9 @@
     <ClInclude Include="Message.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="Content.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MessageNoticerServer.rc">
@@ -76,6 +76,9 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\MessageNoticerClient\icon1.ico">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="icon1.ico">
       <Filter>资源文件</Filter>
     </Image>
   </ItemGroup>

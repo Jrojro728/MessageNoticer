@@ -4,6 +4,7 @@
 #include "pch.h"
 #include "Logger.h"
 #include "Client.h"
+#include "Content.h"
 
 // Importance level for a message.
 enum class MessagePriority : uint8_t
@@ -18,16 +19,13 @@ enum class MessagePriority : uint8_t
 class Message
 {
 public:
-	// Default constructor is deleted because Client has no default constructor.
-	Message() = delete;
-
 	// Full constructor.
 	// Pass INVALID_SOCKET as a sentinel to indicate "no specific sender/receiver".
-	Message(string title = "", string content = "", Client Sender = INVALID_SOCKET,
+	Message(string title = "", Payload content = Payload("", Payload::Text), Client Sender = INVALID_SOCKET,
 		Client Receiver = INVALID_SOCKET,
 		uuid::uuid messageUUID = uuid::random_generator()(),
 		MessagePriority priority = MessagePriority::Normal)
-		: Title(std::move(title)), Content(std::move(content)),
+		: Title(std::move(title)), Content(content),
 		MessageUUID(messageUUID), Priority(priority),
 		SendTime(std::chrono::system_clock::now()),
 		Sender(Sender), Receiver(Receiver)
@@ -51,9 +49,6 @@ public:
 	};
 
 	// Returns a formatted UTC time string like "2026-05-05 11:30:45".
-	// Converts chrono time_point 'time_t' to std::tm for formatting.
-	// This avoids C++20 chrono floor / year_month_day / hh_mm_ss pitfalls
-	// while still storing the timestamp as std::chrono::system_clock::time_point.
 	std::string GetFormattedSendTime() const {
 		char buf[100]{};
 		std::time_t tt = std::chrono::system_clock::to_time_t(SendTime);
@@ -84,23 +79,38 @@ public:
 		}
 	}
 
+	operator std::string() const {
+		Json::FastWriter Writer;
+		Json::Value Root;
+
+		Root["title"] = Title;
+		Root["priority"] = static_cast<uint8_t>(Priority);
+
+		Json::Value Content = this->Content;
+
+		Root["content"] = Content;
+		Root["sender"] = Sender.GetSocket();
+		Root["receiver"] = Receiver.GetSocket();
+		std::string description = Writer.write(Root);
+		return description;
+	}
+
 	// ---------- Setters ----------
 
 	void SetTitle(const char* title) { Title = std::string(title); };
 	void SetTitle(string title) { Title = std::move(title); };
-	void SetContent(const char* content) { Content = std::string(content); };
-	void SetContent(string content) { Content = std::move(content); };
+	void SetContent(Payload content) { Content = (content); };
 	void SetPriority(MessagePriority priority) { Priority = priority; };
 	void SetReceiver(Client receiver) { Receiver = receiver; };
 	void SetUUID(uuid::uuid uuid) { MessageUUID = uuid; };
 
 private:
-	std::string Title;                           // Message title / subject
-	std::string Content;                         // Message body
-	uuid::uuid MessageUUID;                      // Unique identifier for this message
-	MessagePriority Priority;                    // Importance level
+	std::string Title;								// Message title / subject
+	Payload Content;								// Message body
+	uuid::uuid MessageUUID;							// Unique identifier for this message
+	MessagePriority Priority;						// Importance level
 	std::chrono::system_clock::time_point SendTime; // Creation timestamp
-	Client Sender;                               // Originating client
-	Client Receiver;                             // Target client
+	Client Sender;									// Originating client
+	Client Receiver;								// Target client	
 };
 
