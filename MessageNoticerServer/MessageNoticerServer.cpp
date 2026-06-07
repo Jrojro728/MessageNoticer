@@ -31,11 +31,11 @@ int main(int argc, char* argv[])
 	std::string port = "12306";
 	cmdl({ "-p", "--port" }) >> port;
 
-	std::string serverName = "MessageNoticer";
-	cmdl({ "-n", "--name" }) >> serverName;
+	std::string ServerName = "MessageNoticer";
+	cmdl({ "-n", "--name" }) >> ServerName;
 
-	std::string version = "0.1.0.3";
-	cmdl({ "-v", "--version" }) >> version;
+	std::string Version = "0.1.0.3";
+	cmdl({ "-v", "--version" }) >> Version;
 
 	int maxUsers = 64;
 	cmdl({ "-m", "--max" }) >> maxUsers;
@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
 	log4cplus::Initializer initializer;
 	InitNetwork();
 	Logger logger = GetLogger(LOG4CPLUS_TEXT("main"));
-	LOG_INFO(logger, serverName << " v" << version
+	LOG_INFO(logger, ServerName << " v" << Version
 		<< " starting on port " << port);
 
 	SOCKET sListen;
@@ -130,7 +130,7 @@ int main(int argc, char* argv[])
 				uint8_t status = std::find(ClientList.begin(), ClientList.end(), Client(s))->GetClientStatus();
 				//Check status to decide whether to call HandshakeProcess or NormalProcess, if the client is still handshaking, call HandshakeProcess, otherwise call NormalProcess
 				if (status == Handshaking)
-					ret = HandshakeProcess(s, ClientList);
+					ret = HandshakeProcess(s, ClientList, ServerName, Version);
 				if (status == Ready || status == Waiting)
 					ret = NormalProcess(s, ClientList);
 				if (ret == 1) continue;

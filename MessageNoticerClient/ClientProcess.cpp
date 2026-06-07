@@ -2,6 +2,7 @@
 #include "ClientProcess.h"
 #include "HandshakePacket.h"
 #include "NormalPacket.h"
+#include "Message.h"
 
 int HandshakeProcess(SOCKET& sServer)
 {
@@ -45,8 +46,25 @@ int HandshakeProcess(SOCKET& sServer)
 int NormalProcess(SOCKET& sServer)
 {
 	Logger logger = GetLogger(LOG4CPLUS_TEXT("NormalProcess"));
+	Json::Reader reader;
+	Json::Value Root;
+
 	WaitingMessagePacket(0).Send(sServer);
-	SendAMessagePacket("Hello, world!\0", uuid::random_generator()(), 1).Send(sServer);
+	GetClientListPacket(MessagePriority::Low, 0).Send(sServer);
+	LOG_DEBUG(logger, "Sent GetClientListPacket to server.");
+	Packet Received = Packet::PacketFromNetworkRecv(sServer);
+	LOG_DEBUG(logger, "Received response for GetClientListPacket from server." << Received.GetData());
+	if(!reader.parse(Received.GetData(), Root, false))
+	{
+		LOG_ERROR(logger, "Failed to parse client list response.");
+		return 1;
+	}
+	
+	Message msg("", TextContent(""), 0, Root["clients"][0]["id"].as<SOCKET>());
+	SendAMessagePacket(msg, 1).Send(sServer);
+	LOG_DEBUG(logger, "Sent SendAMessagePacket to server.");
+	Received = Packet::PacketFromNetworkRecv(sServer);
+	LOG_DEBUG(logger, "Received response for SendAMessagePacket from server." << Received.GetData());
 
 	return 0;
 }

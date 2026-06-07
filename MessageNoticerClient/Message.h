@@ -6,7 +6,7 @@
 #include "Client.h"
 #include "Content.h"
 
-// Importance level for a message.(aka message level)
+// Importance level for a message.
 enum class MessagePriority : uint8_t
 {
 	Low = 0,  // Informational, no action needed

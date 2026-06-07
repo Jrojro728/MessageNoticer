@@ -3,6 +3,8 @@
 #include "pch.h"
 #include "Network.h"
 #include "Packet.h"
+#include "Client.h"
+#include "Message.h"
 
 // Sent by a client to tell the server what minimum message level it wants to receive.
 // Payload: 1 byte (uint8_t) = MinMessageLevel (0 = all, 255 = none).
@@ -26,16 +28,29 @@ public:
 class SendAMessagePacket : public Packet
 {
 public:
-	SendAMessagePacket(const char* message, uuid::uuid messageUUID, unsigned char PacketVersion = 1)
+	SendAMessagePacket(Message msg, unsigned char PacketVersion = 1)
 		: Packet(PacketType::SendAMessage, PacketVersion)
 	{
-		this->AddData(messageUUID);
-		this->AddData(message, strlen(message));
+		this->AddData(msg.operator std::string());
 	};
 
 	std::string GetType() const override
 	{
 		return "SendAMessagePacket";
+	}
+};
+
+class BroadcastMessagePacket : public Packet
+{
+public:
+	BroadcastMessagePacket(Message msg, unsigned char PacketVersion = 1)
+		: Packet(PacketType::BroadcastMessage, PacketVersion)
+	{
+		this->AddData(msg.operator std::string());
+	};
+	std::string GetType() const override
+	{
+		return "BroadcastMessagePacket";
 	}
 };
 
@@ -61,18 +76,76 @@ public:
 	}
 };
 
-class UnifiedSync : public Packet
+class UnifiedSyncPacket : public Packet
 {
 public:
-	UnifiedSync(const char* syncInfo, unsigned char PacketVersion = 1)
+	UnifiedSyncPacket(const char* syncInfo, unsigned char PacketVersion = 1)
 		: Packet(PacketType::UnifiedSync, PacketVersion)
+	{
+		this->AddData(syncInfo, strlen(syncInfo));
+		this->AddData(
+			static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::seconds>(
+				std::chrono::system_clock::now().time_since_epoch()).count()));// time of the UnifiedSync, used for clients to determine if they need to update their data or not. The time is in seconds since epoch (Unix time).
+	};
+
+	std::string GetType() const override
+	{
+		return "UnifiedSyncPacket";
+	}
+};
+
+class GetClientListPacket : public Packet
+{
+public:
+	GetClientListPacket(uint8_t level, uint32_t number, unsigned char PacketVersion = 1)
+		: Packet(PacketType::GetClientList, PacketVersion)
+	{
+		this->AddData(level);
+		this->AddData(number);
+	};
+
+	GetClientListPacket(MessagePriority level, uint32_t number, unsigned char PacketVersion = 1)
+		: Packet(PacketType::GetClientList, PacketVersion)
+	{
+		this->AddData(level);
+		this->AddData(number);
+	};
+
+	std::string GetType() const override
+	{
+		return "GetClientListPacket";
+	}
+};
+
+class SendClientListResponsePacket : public Packet
+{
+public:
+	SendClientListResponsePacket(const std::vector<Client>& ClientList, unsigned char PacketVersion = 1)
+		: Packet(PacketType::SendClientListResponse, PacketVersion)
 	{
 		Json::FastWriter Writer;
 		Json::Value Root;
-		Root["info"] = syncInfo;
-		Root["timestamp"] = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-		string description = Writer.write(Root);
-		this->AddData(description.c_str(), description.size());
+
+		Json::Value ClientArray(Json::arrayValue);
+		for (const auto& client : ClientList)
+		{
+			Json::Value ClientJson;
+			ClientJson["uuid"] = to_string(client.GetClientID());
+			ClientJson["name"] = client.GetReadableClientName();
+			ClientJson["id"] = client.GetSocket();
+			ClientJson["minMessageLevel"] = client.GetMinMessageLevel();
+			ClientJson["status"] = client.GetClientStatus();
+			ClientArray.append(ClientJson);
+		}
+		Root["clients"] = ClientArray;
+		Root["number"] = ClientList.size();
+
+		std::string clientListJson = Writer.write(Root);
+		this->AddData(clientListJson.c_str(), clientListJson.size());
 	};
 
+	std::string GetType() const override
+	{
+		return "SendClientListResponsePacket";
+	}
 };

@@ -4,19 +4,21 @@
 
 enum PacketType : uint16_t
 {
-	Null = 0,				//NULL packet
-	HandshakeRequest = 1,	//Start Handshake request
-	HandshakeInfo = 2,		//Handshake info, such as server name, version, max users, etc.
-	HandshakeAck = 3,		//Handshake acknowledge, client acknowledges the handshake info
-	HandshakeResponse = 4,	//Response to Handshake request, can be 5 or 6, not implemented
-	HandshakeError = 5,		//Error during Handshake process, such as timeout or invalid request
-	HandshakeSuccess = 6,	//Handshake success, server and client can start to communicate
-	SendAMessage = 7,		//Post a message to the server
-	WaitingMessage = 8, 	//Tell other side to send more messages
-	RegisterChildServer = 9,//Register a child server to the main server
-	UnifiedSync = 10,		//Force synchronize data between all client
-	GetClientList = 11,		//Get the list of client at the specified level
-	SendClientList = 12,	//Send the list of client to the other side
+	Null = 0,					//NULL packet
+	HandshakeRequest = 1,		//Start Handshake request
+	HandshakeInfo = 2,			//Handshake info, such as server name, version, max users, etc.
+	HandshakeAck = 3,			//Handshake acknowledge, client acknowledges the handshake info
+	HandshakeResponse = 4,		//Response to Handshake request, can be 5 or 6, not implemented
+	HandshakeError = 5,			//Error during Handshake process, such as timeout or invalid request
+	HandshakeSuccess = 6,		//Handshake success, server and client can start to communicate
+	SendAMessage = 7,			//Post a message to the server
+	BroadcastMessage = 8,		//Server broadcasts a message to other clients
+	WaitingMessage = 9, 		//Tell other side to send more messages
+	RegisterChildServer = 10,	//Register a child server to the main server
+	UnifiedSync = 11,			//Force synchronize data between all client
+	GetClientList = 12,			//Get the list of client at the specified level
+	SendClientList = 13,		//Send the list of client to the other side
+	SendClientListResponse = 14,//Response to GetClientList, contains the client list
 };
 
 // Packet base class, a self-buffered packet with automatic memory management.
@@ -86,7 +88,7 @@ public:
 
 	/// Append a length-prefixed data block to the payload.
 	void AddData(const char* data, unsigned int size);
-	void AddData(const std::string& str) { AddData(str.data(), (unsigned int)str.size()); }
+	void AddData(const std::string& str) { AddData(str.data(), (unsigned int)str.size()); };
 
 	/// Extract a POD value from the payload at the given offset.
 	template<typename T>

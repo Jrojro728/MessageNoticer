@@ -2,7 +2,29 @@
 #include "ServerProcess.h"
 #include "Message.h"
 
-int HandshakeProcess(SOCKET& sSelected, std::vector<Client>& ClientList)
+int broadcastMessage(const Message& msg, const std::vector<Client>& ClientList)
+{
+	Logger logger = GetLogger(LOG4CPLUS_TEXT("BroadcastMessage"));
+	LOG_DEBUG(logger, "Broadcasting message: " << msg.GetTitle() << " with content: " << msg.GetContentJson());
+	for (const auto& client : ClientList)
+	{
+		if (client.GetClientStatus() == ClientStatus::Waiting && client.GetMinMessageLevel() <= static_cast<uint8_t>(msg.GetPriority()))
+		{
+			LOG_DEBUG(logger, "Sending message to client " << client.GetSocket());
+			try
+			{
+				BroadcastMessagePacket(msg).Send(client);
+			}
+			catch (const std::exception& e)
+			{
+				LOG_ERROR(logger, "Failed to send message to client " << client.GetSocket() << ": " << e.what());
+			}
+		}
+	}
+	return 0;
+}
+
+int HandshakeProcess(SOCKET& sSelected, std::vector<Client>& ClientList, string ServerName, string Version)
 {
 	Logger logger = GetLogger(LOG4CPLUS_TEXT("HandshakeProcess"));
 	Json::Reader Reader;
@@ -25,7 +47,7 @@ int HandshakeProcess(SOCKET& sSelected, std::vector<Client>& ClientList)
 	}
 
 	// Send info to client
-	HandshakeInfoPacket("blabla", "b1", 64, ClientList.size(), 1, Online).Send(sSelected);
+	HandshakeInfoPacket(ServerName, Version, 64, ClientList.size(), 1, Online).Send(sSelected);
 	// Ack from client
 	if (!Reader.parse(Packet::PacketFromNetworkRecv(sSelected).GetData(), Root, false))
 	{
@@ -52,7 +74,6 @@ int NormalProcess(SOCKET& sSelected, std::vector<Client>& ClientList)
 	Logger logger = GetLogger(LOG4CPLUS_TEXT("NormalProcess"));
 	Packet temp = Packet::PacketFromNetworkRecv(sSelected);
 	int16_t PacketID = temp.GetPacketID();
-	Message Temp{""};
 	
 	switch (PacketID)
 	{
@@ -70,25 +91,31 @@ int NormalProcess(SOCKET& sSelected, std::vector<Client>& ClientList)
 		}
 		case PacketType::SendAMessage: // SendMessagePacket
 		{
-			//<TODO> 让message类变成json格式且在SendAMessagePacket中使用
 			LOG_DEBUG(logger, "Received SendMessagePacket from client " << sSelected);
-			/*Json::Reader Reader;
-			Json::Value Root;*/
-			Temp.SetUUID(temp.GetData<uuid::uuid>()); // Get the message's ID
-			LOG_DEBUG(logger, "Message UUID: " << Temp.GetMessageUUID()); 
-			LOG_DEBUG(logger, "Message content: " << temp.GetData(sizeof(uuid::uuid)));
-			/*if (!Reader.parse(temp.GetData(sizeof(uuid::uuid)), Root, false))
+			try
 			{
-				LOG_ERROR(logger, "MessagePacket parse failed!");
-				break;
+				Message Temp = Message(temp);
+				LOG_DEBUG(logger, "Message UUID: " << Temp.GetMessageUUID());
+				LOG_DEBUG(logger, "Message content: " << Temp.GetContentJson());
+				broadcastMessage(Temp, ClientList);
 			}
-			LOG_DEBUG(logger, "Message content: " << Root["content"].asString()); */
+			catch (const std::exception& e)
+			{
+				LOG_ERROR(logger, e.what());
+				return 1;
+			}
 			break;
 		}
 		case PacketType::GetClientList: // GetClientListPacket
 		{
 			LOG_DEBUG(logger, "Received GetClientListPacket from client " << sSelected);
-			
+			std::vector<Client> QualifiedClientList;
+			for(auto & client : ClientList)
+			{
+				if (client.GetClientStatus() == ClientStatus::Ready && client.GetMinMessageLevel() <= temp.GetData<uint8_t>())
+					QualifiedClientList.push_back(client);
+			}
+			SendClientListResponsePacket(QualifiedClientList).Send(sSelected);
 			break;
 		}
 		default:
@@ -100,5 +127,3 @@ int NormalProcess(SOCKET& sSelected, std::vector<Client>& ClientList)
 	
 	return 0;
 }
-
-
