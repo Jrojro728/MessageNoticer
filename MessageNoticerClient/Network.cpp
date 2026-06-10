@@ -2,10 +2,32 @@
 #include "Network.h"
 #include "Logger.h"
 
-using std::cerr, std::endl;
-// Receive buffer (dynamically grown on demand)
-static std::vector<char> TempDataBuffer(65536);
 Logger NetworkLogger = GetLogger("Network");
+
+// Helper: loop-read until we get exactly `size` bytes or the connection dies.
+// Returns the number of bytes actually read; on error returns -1.
+// On graceful close returns a value < size (caller checks).
+static int RecvAll(SOCKET s, char* buf, int size)
+{
+	int total = 0;
+	while (total < size)
+	{
+		int n = recv(s, buf + total, size - total, 0);
+		if (n == 0)
+			return total; // graceful close
+		if (n == SOCKET_ERROR)
+		{
+#ifdef _WIN32
+			if (WSAGetLastError() == WSAEINTR) continue;
+#else
+			if (errno == EINTR) continue;
+#endif
+			return -1; // real error
+		}
+		total += n;
+	}
+	return total;
+}
 
 int InitNetwork()
 {
@@ -114,50 +136,58 @@ int CreateSocket(SOCKET& s, const char* port, const char* address)
 
 int Recv(SOCKET& s, std::vector<char>& DataBuffer)
 {
-    static std::vector<char> peekBuffer(65536);
-
-    int result = recv(s, peekBuffer.data(), (int)peekBuffer.size(), MSG_PEEK);
-
-    if (result == SOCKET_ERROR)
-    {
+	// ---- Step 1: Read the 4-byte size header (big-endian) ----
+	char sizeBuf[4];
+	int n = RecvAll(s, sizeBuf, 4);
+	if (n != 4)
+	{
+		DataBuffer.clear();
 #ifdef SERVER_APP
-        DataBuffer.clear();
-        throw ClientSocketClosedException();
+		throw ClientSocketClosedException();
 #else
-        return SOCKET_ERROR;
+		return (n == 0) ? 0 : SOCKET_ERROR;
 #endif
-    }
+	}
 
-    if (result == 0)
-    {
-        DataBuffer.clear();
+	// Parse big-endian uint32_t
+	uint32_t packetSize =
+		((unsigned char)sizeBuf[0] << 24) |
+		((unsigned char)sizeBuf[1] << 16) |
+		((unsigned char)sizeBuf[2] << 8)  |
+		(unsigned char)sizeBuf[3];
+
+	// Sanity check: min header is 7 bytes, max is MAX_PACKET_SIZE
+	if (packetSize < 7 || packetSize > MAX_PACKET_SIZE)
+	{
+		LOG_ERROR(NetworkLogger, "Invalid packet size: " << packetSize << " from socket " << s);
+		DataBuffer.clear();
 #ifdef SERVER_APP
-        throw ClientSocketClosedException();
+		throw ClientSocketClosedException();
 #else
-        return 0;
+		return SOCKET_ERROR;
 #endif
-    }
+	}
 
-    if (result > (int)peekBuffer.size())
-        peekBuffer.resize(result + 65536);
+	// ---- Step 2: Read the rest of the packet ----
+	DataBuffer.resize(packetSize);
+	memcpy(DataBuffer.data(), sizeBuf, 4);
 
-    DataBuffer.resize(result);
-    result = recv(s, DataBuffer.data(), result, 0);
-
-    if (result == SOCKET_ERROR || result == 0)
-    {
-        DataBuffer.clear();
+	n = RecvAll(s, DataBuffer.data() + 4, packetSize - 4);
+	if (n != (int)(packetSize - 4))
+	{
+		DataBuffer.clear();
 #ifdef SERVER_APP
-        throw ClientSocketClosedException();
+		throw ClientSocketClosedException();
+#else
+		return (n >= 0) ? 0 : SOCKET_ERROR;
 #endif
-        return result;
-    }
+	}
 
 #ifdef _DEBUG
-    LOG_DEBUG(NetworkLogger, s << "sent: " << strToHexString(DataBuffer.data(), result));
+	LOG_DEBUG(NetworkLogger, s << " recv: " << strToHexString(DataBuffer.data(), packetSize));
 #endif
 
-    return result;
+	return (int)packetSize;
 }
 
 int Send(SOCKET& s, const char* DataBuffer, int Size)

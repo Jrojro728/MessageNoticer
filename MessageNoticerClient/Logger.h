@@ -1,13 +1,106 @@
 #pragma once
 #include "pch.h"
+#include "Colors.h"
 
-#define LOG_INFO(logger, msg) LOG4CPLUS_INFO(logger, LOG4CPLUS_TEXT(msg))
-#define LOG_DEBUG(logger, msg) LOG4CPLUS_DEBUG(logger, LOG4CPLUS_TEXT(msg))
-#define LOG_WARN(logger, msg) LOG4CPLUS_WARN(logger, LOG4CPLUS_TEXT(msg))
-#define LOG_ERROR(logger, msg) LOG4CPLUS_ERROR(logger, LOG4CPLUS_TEXT(msg))
-#define LOG_FATAL(logger, msg) LOG4CPLUS_FATAL(logger, LOG4CPLUS_TEXT(msg))
+// Log levels are color-coded by severity:
+//   FATAL: red background   ERROR: red     WARN: yellow
+//   INFO:  green            DEBUG: dim
+//
+// Each macro uses ANSI scroll-region control so that log output scrolls
+// in the area above the bottom line, keeping the user's input line fixed at
+// the very last row of the terminal window.
+//
+// gTermRows is set automatically when GetLogger() is first called
+// (see Logger.cpp).  Until then (gTermRows == 0) logs go out normally.
+
+extern int gTermRows;   // terminal height â€” set by first GetLogger() call
+
+#define LOG_INFO(logger, msg) \
+do { \
+	Logger _l = (logger); \
+	if (_l.isEnabledFor(log4cplus::INFO_LOG_LEVEL)) { \
+		if (gTermRows > 0) \
+			std::printf("\033[%d;1H\033[K", gTermRows - 1); \
+		log4cplus::tostringstream _buf; \
+		_buf << CLR_GREEN << msg << CLR_RESET; \
+		_l.forcedLog(log4cplus::INFO_LOG_LEVEL, _buf.str(), __FILE__, __LINE__); \
+		if (gTermRows > 0) { \
+			std::printf("\033[%d;1H\033[K> ", gTermRows); \
+			std::fflush(stdout); \
+		} \
+	} \
+} while(0)
+
+#define LOG_DEBUG(logger, msg) \
+do { \
+	Logger _l = (logger); \
+	if (_l.isEnabledFor(log4cplus::DEBUG_LOG_LEVEL)) { \
+		if (gTermRows > 0) \
+			std::printf("\033[%d;1H\033[K", gTermRows - 1); \
+		log4cplus::tostringstream _buf; \
+		_buf << CLR_DIM << msg << CLR_RESET; \
+		_l.forcedLog(log4cplus::DEBUG_LOG_LEVEL, _buf.str(), __FILE__, __LINE__); \
+		if (gTermRows > 0) { \
+			std::printf("\033[%d;1H\033[K> ", gTermRows); \
+			std::fflush(stdout); \
+		} \
+	} \
+} while(0)
+
+#define LOG_WARN(logger, msg) \
+do { \
+	Logger _l = (logger); \
+	if (_l.isEnabledFor(log4cplus::WARN_LOG_LEVEL)) { \
+		if (gTermRows > 0) \
+			std::printf("\033[%d;1H\033[K", gTermRows - 1); \
+		log4cplus::tostringstream _buf; \
+		_buf << CLR_YELLOW << msg << CLR_RESET; \
+		_l.forcedLog(log4cplus::WARN_LOG_LEVEL, _buf.str(), __FILE__, __LINE__); \
+		if (gTermRows > 0) { \
+			std::printf("\033[%d;1H\033[K> ", gTermRows); \
+			std::fflush(stdout); \
+		} \
+	} \
+} while(0)
+
+#define LOG_ERROR(logger, msg) \
+do { \
+	Logger _l = (logger); \
+	if (_l.isEnabledFor(log4cplus::ERROR_LOG_LEVEL)) { \
+		if (gTermRows > 0) \
+			std::printf("\033[%d;1H\033[K", gTermRows - 1); \
+		log4cplus::tostringstream _buf; \
+		_buf << CLR_RED << msg << CLR_RESET; \
+		_l.forcedLog(log4cplus::ERROR_LOG_LEVEL, _buf.str(), __FILE__, __LINE__); \
+		if (gTermRows > 0) { \
+			std::printf("\033[%d;1H\033[K> ", gTermRows); \
+			std::fflush(stdout); \
+		} \
+	} \
+} while(0)
+
+#define LOG_FATAL(logger, msg) \
+do { \
+	Logger _l = (logger); \
+	if (_l.isEnabledFor(log4cplus::FATAL_LOG_LEVEL)) { \
+		if (gTermRows > 0) \
+			std::printf("\033[%d;1H\033[K", gTermRows - 1); \
+		log4cplus::tostringstream _buf; \
+		_buf << CLR_RED_BG << msg << CLR_RESET; \
+		_l.forcedLog(log4cplus::FATAL_LOG_LEVEL, _buf.str(), __FILE__, __LINE__); \
+		if (gTermRows > 0) { \
+			std::printf("\033[%d;1H\033[K> ", gTermRows); \
+			std::fflush(stdout); \
+		} \
+	} \
+} while(0)
 
 Logger GetLogger(tstring name);
 
-// ½«×Ö·û´®£¨º¬\0£©×ª»»Îª16½øÖÆ¸ñÊ½µÄ×Ö·û´®£¨Èç "61 62 00 63"£©
+// å°†å­—ç¬¦ä¸²ï¼ˆå«\0ï¼‰è½¬æ¢ä¸º16è¿›åˆ¶æ ¼å¼å­—ç¬¦ä¸²ï¼Œå¦‚ "61 62 00 63"ã€‚
 std::string strToHexString(const char* data, size_t len);
+
+// â”€â”€ Interactive input with command history â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Read a line from stdin with up/down arrow history support.
+// Returns:  1 = line read into buf    0 = EOF (Ctrl+D)   -1 = signal
+int ReadLine(char* buf, size_t size);

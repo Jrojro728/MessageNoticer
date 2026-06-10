@@ -1,7 +1,4 @@
-// MessageNoticerServer.cpp �� TCP server with argh-based interactive console.
-// Console input runs in a background thread; commands are processed via a
-// thread-safe queue checked in the main loop. This works on both POSIX
-// (select on stdin) and Windows (select only accepts sockets).
+﻿// MessageNoticerServer.cpp — TCP server with interactive console.
 #include "pch.h"
 #include "Network.h"
 #include "Client.h"
@@ -12,31 +9,30 @@ using std::cout, std::endl, std::cerr;
 static volatile std::sig_atomic_t gRunning = 1;
 static void OnSignal(int) { gRunning = 0; }
 
-// Thread-safe command queue for console input
+// Thread-safe command queue
 static std::mutex gCmdMutex;
 static std::queue<std::string> gCmdQueue;
 
 static void ConsoleThread();
 static void ProcessCommand(const std::string& line,
-	std::vector<Client>& ClientList, Logger& logger);
+	std::vector<Client>& ClientList, Logger& logger,
+	fd_set& readset, SOCKET& maxSock, SOCKET sListen);
+static void RecalcMaxSock(SOCKET& maxSock, SOCKET sListen,
+	const std::vector<Client>& ClientList);
 
 int main(int argc, char* argv[])
 {
 	signal(SIGINT, OnSignal);
 	signal(SIGTERM, OnSignal);
 
-	// ---- Parse startup CLI arguments with argh ----
+	// ---- Parse CLI args ----
 	argh::parser cmdl(argc, argv, argh::parser::PREFER_PARAM_FOR_UNREG_OPTION);
-
 	std::string port = "12306";
 	cmdl({ "-p", "--port" }) >> port;
-
 	std::string ServerName = "MessageNoticer";
 	cmdl({ "-n", "--name" }) >> ServerName;
-
 	std::string Version = "0.1.0.3";
 	cmdl({ "-v", "--version" }) >> Version;
-
 	int maxUsers = 64;
 	cmdl({ "-m", "--max" }) >> maxUsers;
 
@@ -49,13 +45,11 @@ int main(int argc, char* argv[])
 
 	SOCKET sListen;
 	std::vector<Client> ClientList;
-
 	if (CreateSocket(sListen, port.c_str(), NULL) != 0) {
 		LOG_FATAL(logger, "Failed to create listening socket.");
 		return 1;
 	}
 
-	// Start console input thread
 	std::thread consoleThr(ConsoleThread);
 
 	fd_set readset{};
@@ -78,12 +72,10 @@ int main(int argc, char* argv[])
 			}
 		}
 		if (!cmdLine.empty())
-			ProcessCommand(cmdLine, ClientList, logger);
+			ProcessCommand(cmdLine, ClientList, logger, readset, maxSock, sListen);
 
-		// Use a timeout so console commands are handled promptly
 		fd_set tmpset = readset;
 		struct timeval tv = { 0, 100000 };  // 100 ms
-
 		int ret = select((int)(maxSock + 1), &tmpset, NULL, NULL, &tv);
 		if (ret == SOCKET_ERROR) {
 			int selErr = GetSocketError();
@@ -105,19 +97,16 @@ int main(int argc, char* argv[])
 			// ---- New connection ----
 			if (s == sListen)
 			{
-				// Accept the new connection
 				SOCKET c = accept(s, NULL, NULL);
 				if (c == INVALID_SOCKET) {
 					LOG_ERROR(logger, "accept() failed: " << GetSocketError());
 					continue;
 				}
-				// Check if the server is full
 				if (ClientList.size() >= (size_t)maxUsers) {
 					LOG_ERROR(logger, "max clients (" << maxUsers << ") reached.");
 					CloseSocket(c);
 					continue;
 				}
-				// Add new client to client list and select set
 				FD_SET(c, &readset);
 				if (c > maxSock) maxSock = c;
 				LOG_INFO(logger, c << " try to login.");
@@ -128,7 +117,6 @@ int main(int argc, char* argv[])
 			// ---- Client data ----
 			try {
 				uint8_t status = std::find(ClientList.begin(), ClientList.end(), Client(s))->GetClientStatus();
-				//Check status to decide whether to call HandshakeProcess or NormalProcess, if the client is still handshaking, call HandshakeProcess, otherwise call NormalProcess
 				if (status == Handshaking)
 					ret = HandshakeProcess(s, ClientList, ServerName, Version);
 				if (status == Ready || status == Waiting)
@@ -139,12 +127,8 @@ int main(int argc, char* argv[])
 				LOG_INFO(logger, s << " logged off.");
 				CloseSocket(s);
 				FD_CLR(s, &readset);
-				if (s == maxSock) {
-					maxSock = sListen;
-					for (auto& cl : ClientList)
-						if (cl.GetSocket() > maxSock)
-							maxSock = cl.GetSocket();
-				}
+				if (s == maxSock)
+				RecalcMaxSock(maxSock, sListen, ClientList);
 				if (!ClientList.empty())
 					ClientList.erase(std::find(ClientList.begin(), ClientList.end(), Client(s)));
 			}
@@ -167,94 +151,147 @@ int main(int argc, char* argv[])
 }
 
 // ---------------------------------------------------------------------------
-// Background thread: reads stdin line by line
+// Console input thread
 // ---------------------------------------------------------------------------
 static void ConsoleThread()
 {
 	while (gRunning)
 	{
 		char buf[4096];
-		if (fgets(buf, sizeof(buf), stdin) == nullptr)
-			break;  // EOF
+		int ret = ReadLine(buf, sizeof(buf));
+		if (ret <= 0) break;
 
-		// Strip trailing newline
 		size_t len = strlen(buf);
-		while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r'))
-			buf[--len] = '\0';
-
 		if (len == 0) continue;
 
 		std::lock_guard<std::mutex> lock(gCmdMutex);
 		gCmdQueue.push(buf);
 	}
-
-	// stdin closed �� nothing more to do; thread exits
-	// The main loop continues servicing clients.
 }
 
 // ---------------------------------------------------------------------------
-// Command dispatch (uses argh for parsing)
+// Helpers for ProcessCommand
+// ---------------------------------------------------------------------------
+
+// Find client by socket, returns iterator or ClientList.end()
+static auto FindClient(std::vector<Client>& ClientList, SOCKET target)
+	-> decltype(ClientList.end())
+{
+	return std::find(ClientList.begin(), ClientList.end(), Client(target));
+}
+
+// Recalculate maxSock from ClientList
+static void RecalcMaxSock(SOCKET& maxSock, SOCKET sListen,
+	const std::vector<Client>& ClientList)
+{
+	maxSock = sListen;
+	for (auto& cl : ClientList)
+		if (cl.GetSocket() > maxSock)
+			maxSock = cl.GetSocket();
+}
+
+// Remove client from readset, close socket, erase from list
+static void RemoveClient(std::vector<Client>& ClientList,
+	fd_set& readset, SOCKET& maxSock, SOCKET sListen, SOCKET target)
+{
+	auto it = FindClient(ClientList, target);
+	if (it == ClientList.end()) return;
+
+	CloseSocket(it->GetSocket());
+	FD_CLR(it->GetSocket(), &readset);
+	if (it->GetSocket() == maxSock)
+		RecalcMaxSock(maxSock, sListen, ClientList);
+	ClientList.erase(it);
+}
+
+// ---------------------------------------------------------------------------
+// Command dispatch
 // ---------------------------------------------------------------------------
 static void ProcessCommand(const std::string& line,
-	std::vector<Client>& ClientList, Logger& logger)
+	std::vector<Client>& ClientList, Logger& logger,
+	fd_set& readset, SOCKET& maxSock, SOCKET sListen)
 {
-	// Split line into tokens
+	// Tokenize
 	std::istringstream iss(line);
-	std::vector<std::string> tokens;
+	std::vector<std::string> t;
 	std::string tok;
-	while (iss >> tok) tokens.push_back(tok);
-	if (tokens.empty()) return;
+	while (iss >> tok) t.push_back(tok);
+	if (t.empty()) return;
 
-	// Build null-terminated argv for argh
-	std::vector<const char*> args = { "console" };
-	for (auto& t : tokens) args.push_back(t.c_str());
-	args.push_back(nullptr);
+	const std::string& cmd = t[0];
 
-	argh::parser cmd;
-	cmd.parse(args.data(), argh::parser::PREFER_PARAM_FOR_UNREG_OPTION);
-	const auto& pos = cmd.pos_args();
-
-	// pos[0] = "console" (placeholder), pos[1] = command
-	std::string cmdName = (pos.size() >= 2) ? pos[1] : "";
-
-	if (cmdName == "/help" || cmdName == "/h" || cmdName == "/?") {
+	// ── /help ──────────────────────────────────────────────────────────
+	auto cmdHelp = [&]() {
 		LOG_INFO(logger, "=== Commands ===");
 		LOG_INFO(logger, "  /help | /h | /?           Show this help");
 		LOG_INFO(logger, "  /list | /ls               List connected clients");
 		LOG_INFO(logger, "  /kick <socket>            Disconnect client");
 		LOG_INFO(logger, "  /count | /c               Client count");
 		LOG_INFO(logger, "  /shutdown | /exit | /quit Graceful shutdown");
-	}
-	else if (cmdName == "/list" || cmdName == "/ls") {
+	};
+
+	// ── /list ──────────────────────────────────────────────────────────
+	auto cmdList = [&]() {
 		LOG_INFO(logger, "Clients (" << ClientList.size() << "):");
 		for (auto& cl : ClientList)
 			LOG_INFO(logger, "  " << cl.GetSocket()
 				<< "  " << cl.GetReadableClientName());
-	}
-	else if (cmdName == "/count" || cmdName == "/c") {
+	};
+
+	// ── /count ─────────────────────────────────────────────────────────
+	auto cmdCount = [&]() {
 		LOG_INFO(logger, "Client count: " << ClientList.size());
-	}
-	else if (cmdName == "/kick") {
-		if (pos.size() < 3) {
+	};
+
+	// ── /kick ──────────────────────────────────────────────────────────
+	auto cmdKick = [&]() -> bool {
+		if (t.size() < 2) {
 			LOG_WARN(logger, "Usage: /kick <socket>");
+			return false;
 		}
-		else {
-			SOCKET target = (SOCKET)std::stoi(pos[2]);
-			auto it = std::find(ClientList.begin(), ClientList.end(), Client(target));
-			if (it == ClientList.end())
-				LOG_WARN(logger, "Client " << target << " not found.");
-			else {
-				CloseSocket(it->GetSocket());
-				ClientList.erase(it);
-				LOG_INFO(logger, "Kicked client " << target);
-			}
+		SOCKET target;
+		try { target = (SOCKET)std::stoi(t[1]); }
+		catch (...) {
+			LOG_WARN(logger, "Invalid socket: " << t[1]);
+			return false;
 		}
-	}
-	else if (cmdName == "/shutdown" || cmdName == "/exit" || cmdName == "/quit") {
+		if (FindClient(ClientList, target) == ClientList.end()) {
+			LOG_WARN(logger, "Client " << target << " not found.");
+			return false;
+		}
+		RemoveClient(ClientList, readset, maxSock, sListen, target);
+		LOG_INFO(logger, "Kicked client " << target);
+		return true;
+	};
+
+	// ── /shutdown ──────────────────────────────────────────────────────
+	auto cmdShutdown = [&]() {
 		LOG_INFO(logger, "Shutdown requested.");
 		gRunning = 0;
+	};
+
+	// ── Dispatch table ─────────────────────────────────────────────────
+	struct Cmd { const char* name; std::function<void()> fn; };
+	const Cmd dispatch[] = {
+		{ "/help",     cmdHelp },
+		{ "/h",        cmdHelp },
+		{ "/?",        cmdHelp },
+		{ "/list",     cmdList },
+		{ "/ls",       cmdList },
+		{ "/count",    cmdCount },
+		{ "/c",        cmdCount },
+		{ "/kick",     [&]{ cmdKick(); } },
+		{ "/shutdown", cmdShutdown },
+		{ "/exit",     cmdShutdown },
+		{ "/quit",     cmdShutdown },
+	};
+
+	for (auto& entry : dispatch) {
+		if (cmd == entry.name) {
+			entry.fn();
+			return;
+		}
 	}
-	else {
-		LOG_WARN(logger, "Unknown command: \"" << cmdName << "\". Type /help");
-	}
+
+	LOG_WARN(logger, "Unknown command: \"" << cmd << "\". Type /help");
 }

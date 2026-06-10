@@ -9,7 +9,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# ---- Compile definitions ----
+# Define _DEBUG when CMAKE_BUILD_TYPE=Debug (MSVC-compatible)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_definitions(_DEBUG)
+endif()
+
 # ---- Dependencies ----
+set(Boost_NO_SYSTEM_PATHS ON)   # use vcpkg's Boost, not the system one
 find_package(Boost REQUIRED COMPONENTS uuid)              # uuid is header-only
 find_package(jsoncpp REQUIRED)
 find_package(log4cplus REQUIRED)

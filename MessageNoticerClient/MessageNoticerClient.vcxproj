@@ -83,7 +83,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <LanguageStandard_C>stdc11</LanguageStandard_C>
+      <LanguageStandard_C>Default</LanguageStandard_C>
       <StringPooling>true</StringPooling>
       <UseFullPaths>false</UseFullPaths>
     </ClCompile>
@@ -104,7 +104,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <LanguageStandard_C>stdc11</LanguageStandard_C>
+      <LanguageStandard_C>Default</LanguageStandard_C>
       <StringPooling>true</StringPooling>
       <UseFullPaths>false</UseFullPaths>
     </ClCompile>
@@ -125,7 +125,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <LanguageStandard_C>stdc11</LanguageStandard_C>
+      <LanguageStandard_C>Default</LanguageStandard_C>
       <StringPooling>true</StringPooling>
       <UseFullPaths>false</UseFullPaths>
     </ClCompile>
@@ -146,7 +146,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <LanguageStandard_C>stdc11</LanguageStandard_C>
+      <LanguageStandard_C>Default</LanguageStandard_C>
       <StringPooling>true</StringPooling>
       <UseFullPaths>false</UseFullPaths>
     </ClCompile>
@@ -175,6 +175,7 @@
     <ClInclude Include="..\MessageNoticerServer\Network.h" />
     <ClInclude Include="Client.h" />
     <ClInclude Include="ClientProcess.h" />
+    <ClInclude Include="Colors.h" />
     <ClInclude Include="Content.h" />
     <ClInclude Include="HandshakePacket.h" />
     <ClInclude Include="Logger.h" />

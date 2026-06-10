@@ -1,4 +1,4 @@
-// pch.h ¡ªPrecompiled header
+// pch.h â€”Precompiled header
 #pragma once
 
 #ifndef PCH_H
@@ -28,15 +28,20 @@
 #include <csignal>
 #include <mutex>
 #include <queue>
+#include <functional>
+#include <deque>
+#include <algorithm>
 
 // Platform-specific socket headers
 #ifdef _WIN32
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <conio.h>
 #pragma comment(lib, "Ws2_32.lib")
 #else
 #include <unistd.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -44,6 +49,9 @@
 #include <poll.h>
 #include <errno.h>
 #include <signal.h>
+#include <termios.h>
+#include <unistd.h>
+#include <sys/select.h>
 #endif
 
 // Third-party libraries

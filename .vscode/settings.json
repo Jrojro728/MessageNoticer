@@ -1,4 +1,7 @@
 {
     "editor.formatOnSave": true,
-    "files.autoGuessEncoding": true
+    "files.autoGuessEncoding": true,
+    "cmake.configureSettings": {
+        "CMAKE_TOOLCHAIN_FILE": "${env.HOME}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    }
 }

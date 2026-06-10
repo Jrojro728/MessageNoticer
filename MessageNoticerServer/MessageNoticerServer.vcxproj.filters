@@ -71,6 +71,9 @@
     <ClInclude Include="Content.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="Colors.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MessageNoticerServer.rc">
@@ -78,9 +81,6 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\MessageNoticerClient\icon1.ico">
-      <Filter>资源文件</Filter>
-    </Image>
     <Image Include="icon1.ico">
       <Filter>资源文件</Filter>
     </Image>

@@ -31,8 +31,8 @@ int HandshakeProcess(SOCKET& sSelected, std::vector<Client>& ClientList, string 
 	Json::Value Root;
 	uuid::random_generator UUIDGenerator;
 
-	// 接收客户端的数据
-	// 客户端握手请求
+	// Receive Data from Client and
+	// Parse Client's handshake request
 	if (!Reader.parse(Packet::PacketFromNetworkRecv(sSelected).GetData(), Root, false))
 	{
 		LOG_ERROR(logger, "Request parse failed!");
@@ -112,7 +112,7 @@ int NormalProcess(SOCKET& sSelected, std::vector<Client>& ClientList)
 			std::vector<Client> QualifiedClientList;
 			for(auto & client : ClientList)
 			{
-				if (client.GetClientStatus() == ClientStatus::Ready && client.GetMinMessageLevel() <= temp.GetData<uint8_t>())
+				if ((client.GetClientStatus() == ClientStatus::Ready || client.GetClientStatus() == ClientStatus::Waiting) && client.GetMinMessageLevel() >= temp.GetData<uint8_t>())
 					QualifiedClientList.push_back(client);
 			}
 			SendClientListResponsePacket(QualifiedClientList).Send(sSelected);
