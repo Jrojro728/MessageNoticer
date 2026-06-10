@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
 	cmdl({ "-p", "--port" }) >> port;
 	std::string ServerName = "MessageNoticer";
 	cmdl({ "-n", "--name" }) >> ServerName;
-	std::string Version = "0.1.0.3";
+	std::string Version = "0.1.0.4";
 	cmdl({ "-v", "--version" }) >> Version;
 	int maxUsers = 64;
 	cmdl({ "-m", "--max" }) >> maxUsers;
