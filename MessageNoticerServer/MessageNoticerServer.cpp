@@ -222,12 +222,12 @@ static void ProcessCommand(const std::string& line,
 
 	// ── /help ──────────────────────────────────────────────────────────
 	auto cmdHelp = [&]() {
-		LOG_INFO(logger, "=== Commands ===");
-		LOG_INFO(logger, "  /help | /h | /?           Show this help");
-		LOG_INFO(logger, "  /list | /ls               List connected clients");
-		LOG_INFO(logger, "  /kick <socket>            Disconnect client");
-		LOG_INFO(logger, "  /count | /c               Client count");
-		LOG_INFO(logger, "  /shutdown | /exit | /quit Graceful shutdown");
+		LOG_INFO(logger, CLR_CYAN "=== Commands ===" CLR_RESET);
+		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/help | /h | /?" CLR_RESET "           Show this help");
+		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/list | /ls" CLR_RESET "               List connected clients");
+		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/kick <socket>" CLR_RESET "            Disconnect client");
+		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/count | /c" CLR_RESET "               Client count");
+		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/shutdown | /exit | /quit" CLR_RESET " Graceful shutdown");
 	};
 
 	// ── /list ──────────────────────────────────────────────────────────

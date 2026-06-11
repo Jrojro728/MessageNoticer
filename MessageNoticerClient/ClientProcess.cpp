@@ -125,7 +125,7 @@ void ProcessCommand(const std::string& line, SOCKET& sServer)
 
 	// ── /help ────────────────────────────────────────────────────
 	auto cmdHelp = [&]() {
-		LOG_INFO(logger, CLR_BOLD "=== Commands ===" CLR_RESET);
+		LOG_INFO(logger, CLR_CYAN "=== Commands ===" CLR_RESET);
 		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/help | /h" CLR_RESET "           Show this help");
 		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/msg <id> <text>" CLR_RESET "     Send message to client <id>");
 		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/broadcast <text>" CLR_RESET "    Send message to all");
