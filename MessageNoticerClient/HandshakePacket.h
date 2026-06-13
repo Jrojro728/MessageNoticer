@@ -1,5 +1,6 @@
 #pragma once
 #include "Packet.h"
+#include "Client.h"
 
 enum ServerStatus : uint8_t
 {
@@ -47,7 +48,7 @@ public:
 		Info["useronline"] = UserNow;
 
 		Json::Value FastMessage;
-		FastMessage["text"] = "Hello from server!";
+		FastMessage["text"] = "Hello from server!"; //Server can use this field to send a quick message during the handshake process.
 
 		Root["info"] = Info;
 		Root["fastmessage"] = FastMessage;
@@ -97,8 +98,10 @@ public:
 class HandshakeSuccessPacket : public Packet
 {
 public:
-	HandshakeSuccessPacket(unsigned char ProtocalVersion = 1) : Packet(PacketType::HandshakeSuccess, ProtocalVersion) {
+	HandshakeSuccessPacket(Client client = Client(INVALID_SOCKET), unsigned char ProtocalVersion = 1) : Packet(PacketType::HandshakeSuccess, ProtocalVersion)
+	{
 		this->AddData(Ok);
+		this->AddData(client.operator std::string()); // This field is optional for both side
 	};
 
 	std::string GetType() const override {

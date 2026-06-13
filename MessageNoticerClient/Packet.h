@@ -19,6 +19,8 @@ enum PacketType : uint16_t
 	GetClientList = 12,			//Get the list of client at the specified level
 	SendClientList = 13,		//Send the list of client to the other side
 	SendClientListResponse = 14,//Response to GetClientList, contains the client list
+	WhoAmI = 15,				//Ask the other side to tell its identity, such as server or client, and its name and version
+	WhoAmIResponse = 16,		//Response to WhoAmI, contains the identity information
 };
 
 // Packet base class, a self-buffered packet with automatic memory management.

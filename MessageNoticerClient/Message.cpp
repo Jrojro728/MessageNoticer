@@ -6,9 +6,11 @@ Message::Message(Packet pkt) : Sender(INVALID_SOCKET), Receiver(INVALID_SOCKET)
 	Logger logger = GetLogger(LOG4CPLUS_TEXT("Message"));
 	Json::Reader Reader;
 	Json::Value Root;
+	// The packet data is expected to be a JSON string representing the message fields.
 	if (!Reader.parse(pkt.GetData(), Root, false))
 		throw std::runtime_error("Message constructor: failed to parse packet data as JSON.");
 
+	// Extract fields from JSON, with error handling for missing/invalid fields.
 	this->Title = Root["title"].asString();
 	switch (Root["content"]["type"].asUInt())
 	{
@@ -21,7 +23,7 @@ Message::Message(Packet pkt) : Sender(INVALID_SOCKET), Receiver(INVALID_SOCKET)
 		break;
 	}
 	
-	this->MessageUUID = pkt.GetPacketUUID();
+	this->MessageUUID = uuid::uuid_from_string(Root["uuid"].asString());
 	this->Priority = static_cast<MessagePriority>(Root["priority"].asUInt());
 	this->Sender = Client(Root["sender"].as<SOCKET>());
 	this->Receiver = Client(Root["receiver"].as<SOCKET>());
@@ -31,8 +33,7 @@ Message::Message(Packet pkt) : Sender(INVALID_SOCKET), Receiver(INVALID_SOCKET)
 Message::operator std::string() const
 {
 	Json::FastWriter Writer;
-	std::string description = Writer.write(operator Json::Value());
-	return description;
+	return Writer.write(operator Json::Value());
 }
 
 Message::operator Json::Value() const
@@ -42,10 +43,11 @@ Message::operator Json::Value() const
 	Root["priority"] = static_cast<uint8_t>(Priority);
 
 	Json::Value Content = this->Content;
-
 	Root["content"] = Content;
 	Root["sender"] = Sender.GetSocket();
 	Root["receiver"] = Receiver.GetSocket();
 	Root["timestamp"] = GetSendTimeEpoch();
+	Root["uuid"] = to_string(MessageUUID);
+
 	return Root;
 }

@@ -20,8 +20,8 @@ Message::Message(Packet pkt) : Sender(INVALID_SOCKET), Receiver(INVALID_SOCKET)
 		this->Content = Payload(Root["content"]["content"].asString(), Payload::Text);
 		break;
 	}
-	
-	this->MessageUUID = pkt.GetPacketUUID();
+
+	this->MessageUUID = uuid::uuid_from_string(Root["uuid"].asString());
 	this->Priority = static_cast<MessagePriority>(Root["priority"].asUInt());
 	this->Sender = Client(Root["sender"].as<SOCKET>());
 	this->Receiver = Client(Root["receiver"].as<SOCKET>());
@@ -31,8 +31,7 @@ Message::Message(Packet pkt) : Sender(INVALID_SOCKET), Receiver(INVALID_SOCKET)
 Message::operator std::string() const
 {
 	Json::FastWriter Writer;
-	std::string description = Writer.write(operator Json::Value());
-	return description;
+	return Writer.write(operator Json::Value());
 }
 
 Message::operator Json::Value() const
@@ -47,5 +46,6 @@ Message::operator Json::Value() const
 	Root["sender"] = Sender.GetSocket();
 	Root["receiver"] = Receiver.GetSocket();
 	Root["timestamp"] = GetSendTimeEpoch();
+	Root["uuid"] = to_string(MessageUUID);
 	return Root;
 }

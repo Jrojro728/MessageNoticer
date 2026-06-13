@@ -5,19 +5,33 @@
 int broadcastMessage(const Message& msg, const std::vector<Client>& ClientList)
 {
 	Logger logger = GetLogger(LOG4CPLUS_TEXT("BroadcastMessage"));
-	LOG_DEBUG(logger, "Broadcasting message: " << msg.GetTitle() << " with content: " << msg.GetContentJson());
+	LOG_DEBUG(logger, CLR_BOLD CLR_GREEN "Broadcasting message: " << msg.GetTitle() << " with content: " << msg.GetContentJson() << CLR_RESET);
+	if (msg.GetReceiver() != BroadcastClient)
+	{
+		try
+		{
+			LOG_DEBUG(logger, CLR_BOLD CLR_GREEN "Sending message to client " << msg.GetReceiver() << CLR_RESET);
+			SendAMessagePacket(msg).Send(msg.GetReceiver());
+			return 0;
+		}
+		catch (const std::exception& e)
+		{
+			LOG_ERROR(logger, CLR_BOLD CLR_RED_BG "Failed to send message to client " << msg.GetReceiver() << ": " << e.what() << CLR_RESET);
+			return 1;
+		}
+	}
 	for (const auto& client : ClientList)
 	{
-		if (client.GetClientStatus() == ClientStatus::Waiting && client.GetMinMessageLevel() <= static_cast<uint8_t>(msg.GetPriority()))
+		if (client.GetClientStatus() == ClientStatus::Waiting && client.GetMinMessageLevel() <= static_cast<uint8_t>(msg.GetPriority()) && client != msg.GetSender())
 		{
-			LOG_DEBUG(logger, "Sending message to client " << client.GetSocket());
+			LOG_DEBUG(logger, CLR_BOLD CLR_GREEN "Sending message to client " << client.GetSocket() << CLR_RESET);
 			try
 			{
 				BroadcastMessagePacket(msg).Send(client);
 			}
 			catch (const std::exception& e)
 			{
-				LOG_ERROR(logger, "Failed to send message to client " << client.GetSocket() << ": " << e.what());
+				LOG_ERROR(logger, CLR_BOLD CLR_RED_BG "Failed to broadcast message to client " << client.GetSocket() << ": " << e.what() << CLR_RESET);
 			}
 		}
 	}
@@ -63,9 +77,10 @@ int HandshakeProcess(SOCKET& sSelected, std::vector<Client>& ClientList, string 
 	}
 
 	//Send Handshake success
-	HandshakeSuccessPacket().Send(sSelected);
 	ClientList.erase(std::find(ClientList.begin(), ClientList.end(), Client(sSelected)));
-	ClientList.push_back(Client(sSelected, UUIDGenerator(), Root["name"].asString(), ClientStatus::Ready));
+	Client NewClient(sSelected, UUIDGenerator(), Root["name"].asString(), ClientStatus::Ready);
+	ClientList.push_back(NewClient);
+	HandshakeSuccessPacket(NewClient).Send(sSelected);
 	return 0;
 }
 
@@ -95,8 +110,12 @@ int NormalProcess(SOCKET& sSelected, std::vector<Client>& ClientList)
 			try
 			{
 				Message Temp = Message(temp);
-				LOG_DEBUG(logger, "Message UUID: " << Temp.GetMessageUUID());
-				LOG_DEBUG(logger, "Message content: " << Temp.GetContentJson());
+				LOG_DEBUG(logger, "Message UUID: "		<< Temp.GetMessageUUID());
+				LOG_DEBUG(logger, "Message content: "	<< Temp.GetContentJson());
+				LOG_DEBUG(logger, "Message priority: "	<< static_cast<int>(Temp.GetPriority()));
+				LOG_DEBUG(logger, "Message sender: "	<< Temp.GetSender().GetSocket());
+				LOG_DEBUG(logger, "Message receiver: " << ((Temp.GetReceiver() == BroadcastClient) ? "(Broadcast)" : std::to_string(Temp.GetReceiver().GetSocket())));
+				LOG_DEBUG(logger, "Message send time: " << Temp.GetFormattedSendTime());
 				broadcastMessage(Temp, ClientList);
 			}
 			catch (const std::exception& e)
@@ -110,9 +129,10 @@ int NormalProcess(SOCKET& sSelected, std::vector<Client>& ClientList)
 		{
 			LOG_DEBUG(logger, "Received GetClientListPacket from client " << sSelected);
 			std::vector<Client> QualifiedClientList;
+			uint8_t RequestMinMsgLevel = temp.GetData<uint8_t>();
 			for(auto & client : ClientList)
 			{
-				if ((client.GetClientStatus() == ClientStatus::Ready || client.GetClientStatus() == ClientStatus::Waiting) && client.GetMinMessageLevel() >= temp.GetData<uint8_t>())
+				if ((client.GetClientStatus() == ClientStatus::Ready || client.GetClientStatus() == ClientStatus::Waiting) && client.GetMinMessageLevel() >= RequestMinMsgLevel)
 					QualifiedClientList.push_back(client);
 			}
 			SendClientListResponsePacket(QualifiedClientList).Send(sSelected);

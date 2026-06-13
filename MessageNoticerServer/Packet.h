@@ -2,6 +2,7 @@
 #include "pch.h"
 #include "Network.h"
 
+
 enum PacketType : uint16_t
 {
 	Null = 0,					//NULL packet
@@ -19,6 +20,8 @@ enum PacketType : uint16_t
 	GetClientList = 12,			//Get the list of client at the specified level
 	SendClientList = 13,		//Send the list of client to the other side
 	SendClientListResponse = 14,//Response to GetClientList, contains the client list
+	WhoAmI = 15,				//Ask the other side to tell its identity, such as server or client, and its name and version
+	WhoAmIResponse = 16,		//Response to WhoAmI, contains the identity information
 };
 
 // Packet base class, a self-buffered packet with automatic memory management.
@@ -34,7 +37,11 @@ public:
 	/// Construct from a received network buffer (moves ownership).
 	explicit Packet(std::vector<char> buffer);
 
+	/// <summary>
 	/// Factory: receive a complete packet from a socket.
+	/// </summary>
+	/// <param name="s">Socket to receive the packet from</param>
+	/// <returns>Received packet</returns>
 	inline static Packet PacketFromNetworkRecv(SOCKET s) {
 		std::vector<char> buf;
 		int len = Recv(s, buf);
@@ -43,9 +50,7 @@ public:
 		return Packet(std::move(buf));
 	}
 
-	/// <summary>
 	/// default destructor for Packet class
-	/// </summary>
 	virtual ~Packet() = default;
 
 	void SetUUID(uuid::uuid UUID) { PacketUUID = UUID; }
@@ -64,10 +69,14 @@ public:
 		return this->GetType() == other.GetType();
 	}
 
-	// Get a pointer to the raw buffer (including header).
+	/// Get a pointer to the raw buffer (including header).
 	operator const char* () const { return Data.data(); }
 
+	/// <summary>
 	/// Append a POD value to the payload.
+	/// </summary>
+	/// <typeparam name="T">Any type</typeparam>
+	/// <param name="data">Value to append</param>
 	template<typename T>
 	void AddData(const T& data)
 	{
@@ -90,7 +99,12 @@ public:
 	void AddData(const char* data, unsigned int size);
 	void AddData(const std::string& str) { AddData(str.data(), (unsigned int)str.size()); };
 
+	/// <summary>
 	/// Extract a POD value from the payload at the given offset.
+	/// </summary>
+	/// <typeparam name="T">Any type</typeparam>
+	/// <param name="offset">Offset within the payload</param>
+	/// <returns>Extracted value</returns>
 	template<typename T>
 	T GetData(size_t offset = 0) const
 	{
@@ -101,11 +115,19 @@ public:
 		return result;
 	}
 
+	/// <summary>
 	/// Get a pointer to the payload sub-block at offset.
 	/// The returned pointer is valid as long as the Packet object is alive.
+	/// </summary>
+	/// <param name="offset">Offset within the payload</param>
+	/// <returns>Pointer to the payload string</returns>
 	string GetData(size_t offset = 0) const;
 
+	/// <summary>
 	/// Send the complete packet (including header) to a socket.
+	/// </summary>
+	/// <param name="s">Socket to send the packet to</param>
+	/// <returns>Number of bytes sent</returns>
 	int Send(SOCKET s) const
 	{
 		if (Data.empty())

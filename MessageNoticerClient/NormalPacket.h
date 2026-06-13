@@ -149,3 +149,39 @@ public:
 		return "SendClientListResponsePacket";
 	}
 };
+
+class WhoAmIPacket : public Packet
+{
+public:
+	WhoAmIPacket(const char* reason, unsigned char PacketVersion = 1)
+		: Packet(PacketType::WhoAmI, PacketVersion)
+	{
+		Json::FastWriter Writer;
+		Json::Value Root;
+		Root["reason"] = reason;
+		std::string identityJson = Writer.write(Root);
+		this->AddData(identityJson.c_str(), identityJson.size());
+	};
+	std::string GetType() const override
+	{
+		return "WhoAmIPacket";
+	}
+};
+
+class WhoAmIResponsePacket : public Packet
+{
+public:
+	WhoAmIResponsePacket(Client client, unsigned char PacketVersion = 1)
+		: Packet(PacketType::WhoAmIResponse, PacketVersion)
+	{
+		Json::FastWriter Writer;
+		Json::Value Root;
+		Root = client.operator Json::Value();
+		std::string identityJson = Writer.write(Root);
+		this->AddData(identityJson.c_str(), identityJson.size());
+	};
+	std::string GetType() const override
+	{
+		return "WhoAmIResponsePacket";
+	}
+};

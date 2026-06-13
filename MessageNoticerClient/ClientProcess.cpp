@@ -9,6 +9,8 @@
 #include <functional>
 #include <deque>
 
+Client LocalClient = Client(INVALID_SOCKET); //The Client itself
+
 // ── Shared between ConsoleThread and the main loop ──────────────────
 static std::mutex gCmdMutex;
 static std::deque<std::string> gCmdQueue;
@@ -22,7 +24,7 @@ extern volatile std::sig_atomic_t gRunning;
 ///   1. Send HandshakeRequest (with a random client name).
 ///   2. Receive HandshakeInfo, check max-users.
 ///   3. Send HandshakeAck.
-///   4. Expect HandshakeSuccess.
+///   4. Receive HandshakeSuccess and get client itself.
 /// Logs the server name / version / protocol on success.
 /// </summary>
 /// <param name="sServer">Connected server socket.</param>
@@ -34,9 +36,10 @@ int HandshakeProcess(SOCKET& sServer)
 	Json::Value Root;
 
 	char randStr[8];
+	srand((unsigned int)time(NULL));
 	snprintf(randStr, sizeof(randStr), "%d", rand() % 100000);
 
-	HandshakePacket("TestClient", 1).Send(sServer);
+	HandshakePacket(randStr, 1).Send(sServer);
 
 	Packet Received = Packet::PacketFromNetworkRecv(sServer);
 	if (Received.GetPacketID() == PacketType::HandshakeError)
@@ -57,169 +60,32 @@ int HandshakeProcess(SOCKET& sServer)
 
 	HandshakeAckPacket(randStr, Ok).Send(sServer);
 
-	Packet success = Packet::PacketFromNetworkRecv(sServer);
-	if (success.GetPacketID() != HandshakeSuccess)
+	Received = Packet::PacketFromNetworkRecv(sServer);
+	if (Received.GetPacketID() != PacketType::HandshakeSuccess)
 	{
 		LOG_ERROR(logger, "Failed to get HandshakeSuccess flag");
 		return 1;
 	}
 
-	LOG_INFO(logger, "Connected to server: "
+	// Parse the client info from the handshake success packet
+	Json::Value ClientInfo;
+	if (!Reader.parse(Received.GetData(sizeof(uint8_t)), ClientInfo, false))
+	{
+		LOG_ERROR(logger, "Invalid HandshakeSuccess packet data");
+		return 1;
+	}
+	LocalClient = Client(ClientInfo["id"].asUInt64(), uuid::uuid_from_string(ClientInfo["uuid"].asString()), ClientInfo["name"].asString(), ClientInfo["status"].asUInt());
+
+	LOG_INFO(logger, CLR_BOLD "Connected to server: "
 		<< Root["info"]["name"].asString()
 		<< " Version: " << Root["info"]["version"].asString()
-		<< " Protocol: " << Root["info"]["protocol"].asUInt());
+		<< " Protocol: " << Root["info"]["protocol"].asUInt() << CLR_RESET);
+	LOG_INFO(logger, "Server message: " << Root["fastmessage"]["text"].asString());
+	LOG_INFO(logger, CLR_BOLD  CLR_YELLOW "Client ID: " << LocalClient.GetClientID() << " Socket(server): " << LocalClient.GetSocket() << CLR_RESET);
 
 	return 0;
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Console input (used by main's ConsoleThread)
-// ═══════════════════════════════════════════════════════════════════════
-
-/// <summary>
-/// Background thread: reads stdin via ReadLine() and enqueues lines.
-/// Exits when gRunning becomes 0 or stdin closes.
-/// </summary>
-void ConsoleThread()
-{
-	while (gRunning)
-	{
-		char buf[4096];
-		int ret = ReadLine(buf, sizeof(buf));
-		if (ret <= 0) break;
-
-		size_t len = strlen(buf);
-		if (len == 0) continue;
-
-		std::lock_guard<std::mutex> lock(gCmdMutex);
-		gCmdQueue.push_back(buf);
-	}
-}
-
-/// <summary>
-/// Non-blocking poll: return the next queued command, or an empty string.
-/// </summary>
-std::string PollCommand()
-{
-	std::lock_guard<std::mutex> lock(gCmdMutex);
-	if (gCmdQueue.empty()) return {};
-	std::string line = std::move(gCmdQueue.front());
-	gCmdQueue.pop_front();
-	return line;
-}
-
-/// <summary>
-/// Tokenise |cmd| and dispatch via a lookup table.
-/// </summary>
-void ProcessCommand(const std::string& line, SOCKET& sServer)
-{
-	Logger logger = GetLogger(LOG4CPLUS_TEXT("Command"));
-
-	std::istringstream iss(line);
-	std::vector<std::string> t;
-	std::string tok;
-	while (iss >> tok) t.push_back(tok);
-	if (t.empty()) return;
-
-	const std::string& cmd = t[0];
-
-	// ── /help ────────────────────────────────────────────────────
-	auto cmdHelp = [&]() {
-		LOG_INFO(logger, CLR_CYAN "=== Commands ===" CLR_RESET);
-		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/help | /h" CLR_RESET "           Show this help");
-		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/msg <id> <text>" CLR_RESET "     Send message to client <id>");
-		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/broadcast <text>" CLR_RESET "    Send message to all");
-		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/list" CLR_RESET "                List online clients");
-		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/level <0-255>" CLR_RESET "       Set min message level");
-		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/exit | /quit" CLR_RESET "        Disconnect and exit");
-	};
-
-	// ── /msg ─────────────────────────────────────────────────────
-	auto cmdMsg = [&]() {
-		if (t.size() < 3) {
-			LOG_WARN(logger, "Usage: /msg <receiver_id> <text>");
-			return;
-		}
-		SOCKET receiverId;
-		try { receiverId = (SOCKET)std::stoi(t[1]); }
-		catch (...) { LOG_WARN(logger, "Invalid receiver ID: " << t[1]); return; }
-
-		std::string text;
-		for (size_t i = 2; i < t.size(); ++i) {
-			if (i > 2) text += " ";
-			text += t[i];
-		}
-		Message msg("", TextContent(text), INVALID_SOCKET, Client(receiverId));
-		SendAMessagePacket(msg, 1).Send(sServer);
-		LOG_INFO(logger, CLR_GREEN "Message sent to [" << receiverId << "]" CLR_RESET);
-	};
-
-	// ── /broadcast ───────────────────────────────────────────────
-	auto cmdBroadcast = [&]() {
-		if (t.size() < 2) {
-			LOG_WARN(logger, "Usage: /broadcast <text>");
-			return;
-		}
-		std::string text;
-		for (size_t i = 1; i < t.size(); ++i) {
-			if (i > 1) text += " ";
-			text += t[i];
-		}
-		Message msg("", TextContent(text), INVALID_SOCKET, INVALID_SOCKET);
-		SendAMessagePacket(msg, 1).Send(sServer);
-		LOG_INFO(logger, CLR_GREEN "Broadcast sent." CLR_RESET);
-	};
-
-	// ── /list ────────────────────────────────────────────────────
-	auto cmdList = [&]() {
-		GetClientListPacket(MessagePriority::Low, 0).Send(sServer);
-	};
-
-	// ── /level ───────────────────────────────────────────────────
-	auto cmdLevel = [&]() {
-		uint8_t level = 0;
-		if (t.size() >= 2) {
-			try {
-				int l = std::stoi(t[1]);
-				if (l < 0) l = 0;
-				if (l > 255) l = 255;
-				level = (uint8_t)l;
-			} catch (...) {
-				LOG_WARN(logger, "Invalid level: " << t[1] << ". Using 0.");
-			}
-		}
-		WaitingMessagePacket(level).Send(sServer);
-		LOG_INFO(logger, "Set message level to " CLR_BOLD << (int)level << CLR_RESET);
-	};
-
-	// ── /exit / /quit ────────────────────────────────────────────
-	auto cmdExit = [&]() {
-		LOG_INFO(logger, "Exiting...");
-		gRunning = 0;
-	};
-
-	// ── Dispatch table ───────────────────────────────────────────
-	struct Cmd { const char* name; std::function<void()> fn; };
-	const Cmd dispatch[] = {
-		{ "/help",      cmdHelp },
-		{ "/h",         cmdHelp },
-		{ "/msg",       cmdMsg },
-		{ "/broadcast", cmdBroadcast },
-		{ "/list",      cmdList },
-		{ "/level",     cmdLevel },
-		{ "/exit",      cmdExit },
-		{ "/quit",      cmdExit },
-	};
-
-	for (auto& entry : dispatch) {
-		if (cmd == entry.name) {
-			entry.fn();
-			return;
-		}
-	}
-
-	LOG_WARN(logger, "Unknown command: \"" << cmd << "\". Type /help");
-}
 
 // ═══════════════════════════════════════════════════════════════════════
 //  NormalProcess — select-based packet handler (called from main loop)
@@ -321,6 +187,13 @@ int NormalProcess(SOCKET& sServer)
 			}
 			break;
 		}
+		case PacketType::SendAMessage:
+		{
+			Message msg(pkt);
+			LOG_INFO(logger, CLR_YELLOW "[From " << msg.GetSender().GetSocket()
+				<< "]" CLR_RESET " " CLR_CYAN << msg.GetContentJson() << CLR_RESET);
+			break;
+		}
 		default:
 			LOG_DEBUG(logger, "Received packet ID: " << pkt.GetPacketID());
 			break;
@@ -338,4 +211,156 @@ int NormalProcess(SOCKET& sServer)
 	}
 
 	return 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Console input (used by main's ConsoleThread)
+// ═══════════════════════════════════════════════════════════════════════
+
+/// <summary>
+/// Background thread: reads stdin via ReadLine() and enqueues lines.
+/// Exits when gRunning becomes 0 or stdin closes.
+/// </summary>
+void ConsoleThread()
+{
+	while (gRunning)
+	{
+		char buf[4096];
+		int ret = ReadLine(buf, sizeof(buf));
+		if (ret <= 0) break;
+
+		size_t len = strlen(buf);
+		if (len == 0) continue;
+
+		std::lock_guard<std::mutex> lock(gCmdMutex);
+		gCmdQueue.push_back(buf);
+	}
+}
+
+/// <summary>
+/// Non-blocking poll: return the next queued command, or an empty string.
+/// </summary>
+/// <returns>The next command line, or empty if none.</returns>
+std::string PollCommand()
+{
+	std::lock_guard<std::mutex> lock(gCmdMutex);
+	if (gCmdQueue.empty()) return {};
+	std::string line = std::move(gCmdQueue.front());
+	gCmdQueue.pop_front();
+	return line;
+}
+
+/// <summary>
+/// Tokenise |cmd| and dispatch via a lookup table.
+/// </summary>
+/// <param name="line">The command line to process (e.g. "/msg 123 Hello")</param>
+/// <param name="sServer">Connected server socket, used to send command packets.</param>
+void ProcessCommand(const std::string& line, SOCKET& sServer)
+{
+	Logger logger = GetLogger(LOG4CPLUS_TEXT("Command"));
+
+	std::istringstream iss(line);
+	std::vector<std::string> t;
+	std::string tok;
+	while (iss >> tok) t.push_back(tok);
+	if (t.empty()) return;
+
+	const std::string& cmd = t[0];
+
+	// /help
+	auto cmdHelp = [&]() {
+		LOG_INFO(logger, CLR_CYAN "=== Commands ===" CLR_RESET);
+		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/help | /h" CLR_RESET "           Show this help");
+		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/msg <id> <text>" CLR_RESET "     Send message to client <id>");
+		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/broadcast <text>" CLR_RESET "    Send message to all");
+		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/list" CLR_RESET "                List online clients");
+		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/level <0-255>" CLR_RESET "       Set min message level");
+		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/exit | /quit" CLR_RESET "        Disconnect and exit");
+	};
+
+	// /msg
+	auto cmdMsg = [&]() {
+		if (t.size() < 3) {
+			LOG_WARN(logger, "Usage: /msg <receiver_id> <text>");
+			return;
+		}
+		SOCKET receiverId;
+		try { receiverId = (SOCKET)std::stoi(t[1]); }
+		catch (...) { LOG_WARN(logger, "Invalid receiver ID: " << t[1]); return; }
+
+		std::string text;
+		for (size_t i = 2; i < t.size(); ++i) {
+			if (i > 2) text += " ";
+			text += t[i];
+		}
+		Message msg("", TextContent(text), LocalClient, Client(receiverId));
+		SendAMessagePacket(msg, 1).Send(sServer);
+		LOG_INFO(logger, CLR_GREEN "Message sent to [" << receiverId << "]" CLR_RESET);
+	};
+
+	// /broadcast
+	auto cmdBroadcast = [&]() {
+		if (t.size() < 2) {
+			LOG_WARN(logger, "Usage: /broadcast <text>");
+			return;
+		}
+		std::string text;
+		for (size_t i = 1; i < t.size(); ++i) {
+			if (i > 1) text += " ";
+			text += t[i];
+		}
+		Message msg("", TextContent(text), LocalClient, BroadcastClient);
+		SendAMessagePacket(msg, 1).Send(sServer);
+		LOG_INFO(logger, CLR_GREEN "Broadcast sent." CLR_RESET);
+	};
+
+	// /list
+	auto cmdList = [&]() {
+		GetClientListPacket(MessagePriority::Low, 0).Send(sServer);
+	};
+
+	// /level
+	auto cmdLevel = [&]() {
+		uint8_t level = 0;
+		if (t.size() >= 2) {
+			try {
+				int l = std::stoi(t[1]);
+				if (l < 0) l = 0;
+				if (l > 255) l = 255;
+				level = (uint8_t)l;
+			} catch (...) {
+				LOG_WARN(logger, "Invalid level: " << t[1] << ". Using 0.");
+			}
+		}
+		WaitingMessagePacket(level).Send(sServer);
+		LOG_INFO(logger, "Set message level to " CLR_BOLD << (int)level << CLR_RESET);
+	};
+
+	// /exit | /quit
+	auto cmdExit = [&]() {
+		LOG_INFO(logger, "Exiting...");
+		gRunning = 0;
+	};
+
+	// ── Dispatch table ───────────────────────────────────────────
+	struct Cmd { const char* name; std::function<void()> fn; };
+	const Cmd dispatch[] = {
+		{ "/help",      cmdHelp },
+		{ "/h",         cmdHelp },
+		{ "/msg",       cmdMsg },
+		{ "/broadcast", cmdBroadcast },
+		{ "/list",      cmdList },
+		{ "/level",     cmdLevel },
+		{ "/exit",      cmdExit },
+		{ "/quit",      cmdExit },
+	};
+
+	for (auto& entry : dispatch) {
+		if (cmd == entry.name) {
+			entry.fn();
+			return;
+		}
+	}
+
+	LOG_WARN(logger, "Unknown command: \"" << cmd << "\". Type /help");
 }
