@@ -6,6 +6,7 @@ int broadcastMessage(const Message& msg, const std::vector<Client>& ClientList)
 {
 	Logger logger = GetLogger(LOG4CPLUS_TEXT("BroadcastMessage"));
 	LOG_DEBUG(logger, CLR_BOLD CLR_GREEN "Broadcasting message: " << msg.GetTitle() << " with content: " << msg.GetContentJson() << CLR_RESET);
+	// If the receiver is a specific client, send directly to that client.
 	if (msg.GetReceiver() != BroadcastClient)
 	{
 		try
@@ -20,6 +21,7 @@ int broadcastMessage(const Message& msg, const std::vector<Client>& ClientList)
 			return 1;
 		}
 	}
+	// Broadcast to all clients whose status is Waiting and min message level is less than or equal to the message's priority, except the sender.
 	for (const auto& client : ClientList)
 	{
 		if (client.GetClientStatus() == ClientStatus::Waiting && client.GetMinMessageLevel() <= static_cast<uint8_t>(msg.GetPriority()) && client != msg.GetSender())
@@ -90,10 +92,12 @@ int NormalProcess(SOCKET& sSelected, std::vector<Client>& ClientList)
 	Packet temp = Packet::PacketFromNetworkRecv(sSelected);
 	int16_t PacketID = temp.GetPacketID();
 	
+	// Handle the packet based on its ID.
 	switch (PacketID)
 	{
 		case PacketType::WaitingMessage: // SetMinMessageLevelPacket
 		{
+			// Find the client in the client list and update its minimum message level.
 			auto it = std::find(ClientList.begin(), ClientList.end(), Client(sSelected));
 			if (it != ClientList.end())
 			{
@@ -106,6 +110,7 @@ int NormalProcess(SOCKET& sSelected, std::vector<Client>& ClientList)
 		}
 		case PacketType::SendAMessage: // SendMessagePacket
 		{
+			//Receive a message from client and broadcast it to the receiver(s)
 			LOG_DEBUG(logger, "Received SendMessagePacket from client " << sSelected);
 			try
 			{
@@ -130,12 +135,31 @@ int NormalProcess(SOCKET& sSelected, std::vector<Client>& ClientList)
 			LOG_DEBUG(logger, "Received GetClientListPacket from client " << sSelected);
 			std::vector<Client> QualifiedClientList;
 			uint8_t RequestMinMsgLevel = temp.GetData<uint8_t>();
+			// Filter the client list based on the client's status and minimum message level.
 			for(auto & client : ClientList)
 			{
 				if ((client.GetClientStatus() == ClientStatus::Ready || client.GetClientStatus() == ClientStatus::Waiting) && client.GetMinMessageLevel() >= RequestMinMsgLevel)
 					QualifiedClientList.push_back(client);
 			}
+			// Send the qualified client list back to the client.
 			SendClientListResponsePacket(QualifiedClientList).Send(sSelected);
+			break;
+		}
+		case PacketType::WhoAmI: // WhoAmIPacket
+		{
+			// Send the client who it are according to the server's record.
+			LOG_DEBUG(logger, "Received WhoAmIPacket from client " << sSelected);
+			auto it = std::find(ClientList.begin(), ClientList.end(), Client(sSelected));
+			if (it != ClientList.end())
+			{
+				WhoAmIResponsePacket(*it).Send(sSelected);
+				LOG_DEBUG(logger, "Sent WhoAmIResponsePacket to client " << sSelected);
+			}
+			else // This should not happen, but just in case, we send an error response instead of doing nothing.
+			{
+				LOG_WARN(logger, "Client " << sSelected << " not found in client list during WhoAmI processing.");
+				WhoAmIResponsePacket(INVALID_SOCKET).Send(sSelected);
+			}
 			break;
 		}
 		default:

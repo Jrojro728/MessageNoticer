@@ -108,6 +108,7 @@ int HandshakeProcess(SOCKET& sServer)
 int NormalProcess(SOCKET& sServer)
 {
 	Logger logger = GetLogger(LOG4CPLUS_TEXT("NormalProcess"));
+	Json::Reader reader;
 
 	// select() with a 100 ms timeout
 	fd_set readset;
@@ -172,7 +173,6 @@ int NormalProcess(SOCKET& sServer)
 		}
 		case PacketType::SendClientListResponse:
 		{
-			Json::Reader reader;
 			Json::Value root;
 			if (reader.parse(pkt.GetData(), root, false))
 			{
@@ -192,6 +192,20 @@ int NormalProcess(SOCKET& sServer)
 			Message msg(pkt);
 			LOG_INFO(logger, CLR_YELLOW "[From " << msg.GetSender().GetSocket()
 				<< "]" CLR_RESET " " CLR_CYAN << msg.GetContentJson() << CLR_RESET);
+			break;
+		}
+		case PacketType::WhoAmIResponse:
+		{
+			// Read the client info from the packet and update LocalClient
+			Json::Value ClientInfo;
+			if (!reader.parse(pkt.GetData(), ClientInfo, false))
+			{
+				LOG_ERROR(logger, "Invalid WhoAmIResponse packet data");
+				return 1;
+			}
+			LocalClient = Client(ClientInfo["id"].asUInt64(), uuid::uuid_from_string(ClientInfo["uuid"].asString()), ClientInfo["name"].asString(), ClientInfo["status"].asUInt());
+			LOG_INFO(logger,  CLR_BOLD "You are Client ID: " CLR_YELLOW << LocalClient.GetClientID()
+				<< CLR_RESET CLR_BOLD CLR_GREEN " Name: \"" CLR_RESET CLR_BOLD CLR_YELLOW << LocalClient.GetReadableClientName() << CLR_RESET CLR_BOLD CLR_GREEN "\" Socket(server): " CLR_BOLD CLR_YELLOW << LocalClient.GetSocket() << CLR_RESET);
 			break;
 		}
 		default:
@@ -276,6 +290,7 @@ void ProcessCommand(const std::string& line, SOCKET& sServer)
 		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/list" CLR_RESET "                List online clients");
 		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/level <0-255>" CLR_RESET "       Set min message level");
 		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/exit | /quit" CLR_RESET "        Disconnect and exit");
+		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/whoami" CLR_RESET "			   Show your identity");	
 	};
 
 	// /msg
@@ -336,6 +351,10 @@ void ProcessCommand(const std::string& line, SOCKET& sServer)
 		LOG_INFO(logger, "Set message level to " CLR_BOLD << (int)level << CLR_RESET);
 	};
 
+	auto cmdWhoami = [&]() {
+		WhoAmIPacket("whoami?").Send(sServer);
+	};
+
 	// /exit | /quit
 	auto cmdExit = [&]() {
 		LOG_INFO(logger, "Exiting...");
@@ -353,6 +372,7 @@ void ProcessCommand(const std::string& line, SOCKET& sServer)
 		{ "/level",     cmdLevel },
 		{ "/exit",      cmdExit },
 		{ "/quit",      cmdExit },
+		{ "/whoami",    cmdWhoami },
 	};
 
 	for (auto& entry : dispatch) {
