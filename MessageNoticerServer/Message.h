@@ -6,7 +6,7 @@
 #include "Client.h"
 #include "Content.h"
 
-const Client BroadcastClient = Client(9999999999, uuid::nil_uuid(), "Broadcast", 0); // Special client representing "all clients"
+const Client BroadcastClient = Client(999999, uuid::nil_uuid(), "Broadcast", 0); // Special client representing "all clients"
 
 // Importance level for a message.(aka message level)
 enum class MessagePriority : uint8_t

@@ -8,7 +8,7 @@ enum PacketType : uint16_t
 	HandshakeRequest = 1,		//Start Handshake request
 	HandshakeInfo = 2,			//Handshake info, such as server name, version, max users, etc.
 	HandshakeAck = 3,			//Handshake acknowledge, client acknowledges the handshake info
-	HandshakeResponse = 4,		//Response to Handshake request, can be 5 or 6, not implemented
+	HandshakeResponse = 4,		//Response to Handshake request, can be 5 or 6
 	HandshakeError = 5,			//Error during Handshake process, such as timeout or invalid request
 	HandshakeSuccess = 6,		//Handshake success, server and client can start to communicate
 	SendAMessage = 7,			//Post a message to the server
