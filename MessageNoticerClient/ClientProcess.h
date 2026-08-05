@@ -6,11 +6,15 @@
 extern volatile std::sig_atomic_t gRunning;
 
 // ── Handshake ───────────────────────────────────────────────
+
 /// <summary>
 /// Perform the handshake with the server.
 /// Returns 0 on success, 1 on failure.
 /// </summary>
-int HandshakeProcess(SOCKET& sServer);
+/// <param name="sServer">Socket of the server</param>
+/// <param name="ClientName">Client's name</param>
+/// <returns></returns>
+int HandshakeProcess(SOCKET& sServer, string ClientName);
 
 // ── Interactive console ────────────────────────────────────
 /// <summary>
