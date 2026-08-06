@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(MessageNoticer VERSION 0.1.0.3 LANGUAGES CXX)
+project(MessageNoticer VERSION 0.1.0.4 LANGUAGES CXX)
 
 # ---- Output directory ----
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build)
@@ -39,6 +39,7 @@ set(SERVER_SOURCES
     MessageNoticerServer/Packet.cpp
     MessageNoticerServer/Network.cpp
     MessageNoticerServer/ServerProcess.cpp
+    MessageNoticerServer/Console.cpp
 )
 
 add_executable(MessageNoticerServer ${SERVER_SOURCES})
