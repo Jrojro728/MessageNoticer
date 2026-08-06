@@ -31,6 +31,7 @@
 #include <functional>
 #include <deque>
 #include <algorithm>
+#include <future>
 
 // Platform-specific socket headers
 #ifdef _WIN32

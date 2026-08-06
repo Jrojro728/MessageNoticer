@@ -1,8 +1,8 @@
-// Logger.cpp â€” Terminal scroll region, log4cplus setup, interactive ReadLine.
+// Logger.cpp ¡ª Terminal scroll region, log4cplus setup, interactive ReadLine.
 #include "pch.h"
 #include "Logger.h"
 
-// â”€â”€ Terminal height for scroll-region input-line preservation â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ©¤©¤ Terminal height for scroll-region input-line preservation ©¤©¤©¤©¤©¤©¤©¤©¤©¤
 // gTermRows stores the number of rows in the terminal window, queried once
 // on the first call to GetLogger().  A value > 0 enables the scroll-region
 // behaviour in the LOG_* macros (Logger.h).
@@ -44,7 +44,7 @@ static void SetupScrollRegion()
 	std::fflush(stdout);
 }
 
-// â”€â”€ Reset scroll region (used in signal handler + atexit) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ©¤©¤ Reset scroll region (used in signal handler + atexit) ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 /// <summary>
 /// Restore full-terminal scrolling, clear the screen, and move the cursor
 /// to the top-left corner.  Called from the signal handler (Ctrl+C), the
@@ -56,7 +56,7 @@ static void ResetScrollRegion()
 	std::fflush(stdout);
 }
 
-// â”€â”€ Signal handler: reset terminal before chaining to main's handler â”€â”€
+// ©¤©¤ Signal handler: reset terminal before chaining to main's handler ©¤©¤
 
 #ifdef _WIN32
 /// <summary>
@@ -138,7 +138,7 @@ static void InstallSignalHooks()
 /// Obtain (or create) a log4cplus Logger with the given name.
 ///
 /// On the very first call, the terminal scroll region is set up and signal
-/// hooks are installed â€” this happens once globally, regardless of how many
+/// hooks are installed ¡ª this happens once globally, regardless of how many
 /// times GetLogger is called or how many different logger names are used.
 ///
 /// Each distinct logger name gets its own ConsoleAppender (with a coloured
@@ -168,13 +168,13 @@ Logger GetLogger(tstring name)
 		appender->setName(LOG4CPLUS_TEXT("console"));
 
 		// Layout pattern:
-		//   %D{...}  â†’ date/time with milliseconds
-		//   [%t]     â†’ thread ID
-		//   %-5p     â†’ log level (left-aligned, 5 chars)
-		//   %c       â†’ logger name
-		//   %m       â†’ the message itself
-		//   [%F:%L]  â†’ source file & line number
-		//   %n       â†’ newline
+		//   %D{...}  ¡ú date/time with milliseconds
+		//   [%t]     ¡ú thread ID
+		//   %-5p     ¡ú log level (left-aligned, 5 chars)
+		//   %c       ¡ú logger name
+		//   %m       ¡ú the message itself
+		//   [%F:%L]  ¡ú source file & line number
+		//   %n       ¡ú newline
 		tstring pattern = LOG4CPLUS_TEXT("%D{%y/%m/%d %H:%M:%S.%q} [%t] %-5p %c - %m [%F:%L]%n");
 		appender->setLayout(std::unique_ptr<log4cplus::Layout>(new log4cplus::PatternLayout(pattern)));
 
@@ -192,26 +192,26 @@ Logger GetLogger(tstring name)
 /// <summary>
 /// Convert an arbitrary byte buffer to a hexadecimal string, with bytes
 /// separated by spaces.  Example:
-///   strToHexString("abc\0def", 7) â†’ "61 62 63 00 64 65 66"
+///   strToHexString("abc\0def", 7) ¡ú "61 62 63 00 64 65 66"
 /// </summary>
 /// <param name="data">Pointer to the raw byte buffer.</param>
 /// <param name="len">Number of bytes to convert.</param>
 /// <returns>Space-separated hex string.</returns>
 std::string strToHexString(const char* data, size_t len) {
 	std::stringstream ss;
-	ss << std::hex << std::setfill('0'); // 16è¿›åˆ¶ï¼Œä¸è¶³2ä½è¡¥0
+	ss << std::hex << std::setfill('0'); // 16½øÖÆ£¬²»×ã2Î»²¹0
 	for (size_t i = 0; i < len; ++i) {
 		// Cast through unsigned char to avoid sign-extension artefacts
 		ss << std::setw(2) << static_cast<unsigned int>(static_cast<unsigned char>(data[i]));
 		if (i != len - 1)
-			ss << " "; // å­—èŠ‚é—´ç”¨ç©ºæ ¼åˆ†éš”
+			ss << " "; // ×Ö½Ú¼äÓÃ¿Õ¸ñ·Ö¸ô
 	}
-	return ss.str(); // è¿”å›žæ‹¼æŽ¥å¥½çš„16è¿›åˆ¶å­—ç¬¦ä¸²
+	return ss.str(); // ·µ»ØÆ´½ÓºÃµÄ16½øÖÆ×Ö·û´®
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T
 //  Interactive line reader with up/down-arrow command history
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T¨T
 
 // Persistent command history (shared across ReadLine calls).
 // Up/down arrows navigate this circular buffer; Enter commits the
@@ -220,7 +220,7 @@ static std::deque<std::string> s_history;
 static const size_t MAX_HISTORY = 100;
 static int s_historyPos = -1;   // -1 = brand-new input, 0..n = browsing history
 
-// â”€â”€ Low-level character read â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ©¤©¤ Low-level character read ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 
 #ifdef _WIN32
 
@@ -252,7 +252,7 @@ static int ReadRawChar()
 /// <summary>
 /// Clear everything on the current line after the prompt, then write
 /// the given string.  Used when the user presses Up/Down to switch to
-/// a history entry â€” the old input is erased and the new text appears.
+/// a history entry ¡ª the old input is erased and the new text appears.
 /// </summary>
 /// <param name="line">Text to show on the input line.</param>
 static void RedrawLine(const std::string& line)
@@ -268,13 +268,13 @@ static void RedrawLine(const std::string& line)
 /// received character-by-character instead of line-buffered.
 ///
 /// Supported keys:
-///   Enter       â†’ commit the line, add to history, return 1
-///   Backspace   â†’ delete the previous character
-///   Up arrow    â†’ navigate backward through history
-///   Down arrow  â†’ navigate forward through history / new input
-///   Ctrl+C      â†’ abort (return -1)
-///   Ctrl+D      â†’ EOF on empty line (return 0)
-///   printable   â†’ append to current input, echo to terminal
+///   Enter       ¡ú commit the line, add to history, return 1
+///   Backspace   ¡ú delete the previous character
+///   Up arrow    ¡ú navigate backward through history
+///   Down arrow  ¡ú navigate forward through history / new input
+///   Ctrl+C      ¡ú abort (return -1)
+///   Ctrl+D      ¡ú EOF on empty line (return 0)
+///   printable   ¡ú append to current input, echo to terminal
 ///
 /// The raw-mode terminal attributes are restored before the function
 /// returns, regardless of the exit path.
@@ -287,11 +287,11 @@ int ReadLine(char* buf, size_t size)
 #ifdef _WIN32
 	// _getch() works without explicit raw-mode setup
 #else
-	// â”€ Save terminal attributes and enable raw mode â”€
+	// ©¤ Save terminal attributes and enable raw mode ©¤
 	// Disable: ICANON (line buffering), ECHO (automatic echo),
 	//          ISIG (signal generation on Ctrl+C), IXON (flow control),
-	//          ICRNL (CRâ†’NL translation), OPOST (output processing).
-	// VMIN = 1, VTIME = 0 â†’ read() returns as soon as one byte arrives.
+	//          ICRNL (CR¡úNL translation), OPOST (output processing).
+	// VMIN = 1, VTIME = 0 ¡ú read() returns as soon as one byte arrives.
 	struct termios oldt, newt;
 	tcgetattr(STDIN_FILENO, &oldt);
 	newt = oldt;
@@ -314,7 +314,7 @@ int ReadLine(char* buf, size_t size)
 	{
 		int c = ReadRawChar();
 
-		// â”€â”€ EOF or signal interrupt â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+		// ©¤©¤ EOF or signal interrupt ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 		if (c < 0)
 		{
 			result = -1;
@@ -323,7 +323,7 @@ int ReadLine(char* buf, size_t size)
 
 		switch (c)
 		{
-			// â”€â”€ Enter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+			// ©¤©¤ Enter ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 		case '\n':
 		case '\r':
 		{
@@ -333,7 +333,7 @@ int ReadLine(char* buf, size_t size)
 			break;
 		}
 
-		// â”€â”€ Backspace / DEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+		// ©¤©¤ Backspace / DEL ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 		case '\b':
 		case 0x7f:
 		{
@@ -346,7 +346,7 @@ int ReadLine(char* buf, size_t size)
 			break;
 		}
 
-		// â”€â”€ Escape sequences (arrows, etc.) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+		// ©¤©¤ Escape sequences (arrows, etc.) ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 		case 0x1b:
 		{
 #ifdef _WIN32
@@ -419,7 +419,7 @@ int ReadLine(char* buf, size_t size)
 			break;
 		}
 
-		// â”€â”€ Ctrl+C (literal ETX character, 0x03) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+		// ©¤©¤ Ctrl+C (literal ETX character, 0x03) ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 		case 0x03:
 		{
 			result = -1;
@@ -427,7 +427,7 @@ int ReadLine(char* buf, size_t size)
 			break;
 		}
 
-		// â”€â”€ Ctrl+D (EOF â€” only when the line is empty) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+		// ©¤©¤ Ctrl+D (EOF ¡ª only when the line is empty) ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 		case 0x04:
 		{
 			if (currentLine.empty()) {
@@ -439,7 +439,7 @@ int ReadLine(char* buf, size_t size)
 			break;
 		}
 
-		// â”€â”€ Printable ASCII characters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+		// ©¤©¤ Printable ASCII characters ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 		default:
 		{
 			if (c >= 0x20 && c <= 0x7e && currentLine.size() + 1 < size)
@@ -453,13 +453,13 @@ int ReadLine(char* buf, size_t size)
 		}
 	}
 
-	// â”€â”€ Restore terminal to original settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	// ©¤©¤ Restore terminal to original settings ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 #ifndef _WIN32
 	tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
 #endif
 #pragma warning(disable : 4996)
 
-	// â”€â”€ On success: copy the line into the output buffer â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	// ©¤©¤ On success: copy the line into the output buffer ©¤©¤©¤©¤©¤©¤©¤©¤©¤
 	if (result == 1)
 	{
 		// Append to history (skip when it matches the previous entry)

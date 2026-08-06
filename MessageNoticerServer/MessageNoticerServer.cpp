@@ -13,6 +13,9 @@ static void OnSignal(int) { gRunning = 0; }
 static std::mutex gCmdMutex;
 static std::queue<std::string> gCmdQueue;
 
+// Mutex for thread-safe access to ClientList
+static std::mutex gClientMutex;
+
 static void ConsoleThread();
 static void ProcessCommand(const std::string& line,
 	std::vector<Client>& ClientList, Logger& logger,
@@ -89,48 +92,87 @@ int main(int argc, char* argv[])
 			continue;
 		}
 
-		for (SOCKET s = 0; s <= maxSock; ++s)
+		// ---- 1. Handle new connections (main thread) ----
+		if (FD_ISSET(sListen, &tmpset))
 		{
-			if (!FD_ISSET(s, &tmpset))
-				continue;
-
-			// ---- New connection ----
-			if (s == sListen)
-			{
-				SOCKET c = accept(s, NULL, NULL);
-				if (c == INVALID_SOCKET) {
-					LOG_ERROR(logger, "accept() failed: " << GetSocketError());
-					continue;
-				}
+			SOCKET c = accept(sListen, NULL, NULL);
+			if (c == INVALID_SOCKET) {
+				LOG_ERROR(logger, "accept() failed: " << GetSocketError());
+			}
+			else {
 				if (ClientList.size() >= (size_t)maxUsers) {
 					LOG_ERROR(logger, "max clients (" << maxUsers << ") reached.");
 					CloseSocket(c);
-					continue;
 				}
-				FD_SET(c, &readset);
-				if (c > maxSock) maxSock = c;
-				LOG_INFO(logger, c << " try to login.");
-				ClientList.push_back(Client(c, uuid::nil_uuid(), "", ClientStatus::Handshaking));
-				continue;
+				else {
+					FD_SET(c, &readset);
+					if (c > maxSock) maxSock = c;
+					LOG_INFO(logger, c << " try to login.");
+					{
+						std::lock_guard<std::mutex> lock(gClientMutex);
+						ClientList.push_back(Client(c, uuid::nil_uuid(), "", ClientStatus::Handshaking));
+					}
+				}
 			}
+		}
 
-			// ---- Client data ----
-			try {
-				uint8_t status = std::find(ClientList.begin(), ClientList.end(), Client(s))->GetClientStatus();
-				if (status == Handshaking)
-					ret = HandshakeProcess(s, ClientList, ServerName, Version);
-				if (status == Ready || status == Waiting)
-					ret = NormalProcess(s, ClientList);
-				if (ret == 1) continue;
-			}
-			catch (ClientSocketClosedException&) {
+		// ---- 2. Collect ready client sockets (exclude sListen) ----
+		std::vector<SOCKET> clientReady;
+		for (SOCKET s = 0; s <= maxSock; ++s)
+		{
+			if (s == sListen) continue;
+			if (FD_ISSET(s, &tmpset))
+				clientReady.push_back(s);
+		}
+
+		// ---- 3. Process client data in parallel ----
+		std::vector<std::future<void>> futures;
+		std::vector<SOCKET> disconnected;
+		std::mutex disconnectedMutex;
+
+		for (SOCKET s : clientReady)
+		{
+			futures.push_back(std::async(std::launch::async,
+				[&, s]()
+				{
+					try
+					{
+						std::lock_guard<std::mutex> lock(gClientMutex);
+						auto it = std::find(ClientList.begin(), ClientList.end(), Client(s));
+						if (it == ClientList.end()) return;
+						uint8_t status = it->GetClientStatus();
+						int ret = 0;
+						if (status == Handshaking)
+							ret = HandshakeProcess(s, ClientList, ServerName, Version);
+						if (status == Ready || status == Waiting)
+							ret = NormalProcess(s, ClientList);
+						// ret == 1 means processed but with non-fatal error (continue)
+					}
+					catch (ClientSocketClosedException&)
+					{
+						std::lock_guard<std::mutex> lock(disconnectedMutex);
+						disconnected.push_back(s);
+					}
+				}));
+		}
+
+		// Wait for all parallel processing to complete
+		for (auto& f : futures) f.get();
+
+		// ---- 4. Handle disconnections (single-threaded, modifies readset & ClientList) ----
+		if (!disconnected.empty())
+		{
+			std::lock_guard<std::mutex> lock(gClientMutex);
+			for (SOCKET s : disconnected)
+			{
 				LOG_INFO(logger, s << " logged off.");
 				CloseSocket(s);
 				FD_CLR(s, &readset);
 				if (s == maxSock)
-				RecalcMaxSock(maxSock, sListen, ClientList);
-				if (!ClientList.empty())
-					ClientList.erase(std::find(ClientList.begin(), ClientList.end(), Client(s)));
+					RecalcMaxSock(maxSock, sListen, ClientList);
+				auto it = std::find(ClientList.begin(), ClientList.end(), Client(s));
+				if (it != ClientList.end())
+					ClientList.erase(it);
 			}
 		}
 	}

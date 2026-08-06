@@ -6,7 +6,7 @@
 #include "NormalPacket.h"
 
 // Process the handshake from a selected socket
-int HandshakeProcess(SOCKET& sSelected, std::vector<Client>& ClientList, string ServerName, string Version);
+int HandshakeProcess(const SOCKET& sSelected, std::vector<Client>& ClientList, string ServerName, string Version);
 
 // Process normal messages from a selected socket
-int NormalProcess(SOCKET& sSelected, std::vector<Client>& ClientList);
+int NormalProcess(const SOCKET& sSelected, std::vector<Client>& ClientList);

@@ -13,7 +13,7 @@
 // gTermRows is set automatically when GetLogger() is first called
 // (see Logger.cpp).  Until then (gTermRows == 0) logs go out normally.
 
-extern int gTermRows;   // terminal height â€” set by first GetLogger() call
+extern int gTermRows;   // terminal height ¡ª set by first GetLogger() call
 
 #define LOG_INFO(logger, msg) \
 do { \
@@ -97,10 +97,10 @@ do { \
 
 Logger GetLogger(tstring name);
 
-// å°†å­—ç¬¦ä¸²ï¼ˆå«\0ï¼‰è½¬æ¢ä¸º16è¿›åˆ¶æ ¼å¼å­—ç¬¦ä¸²ï¼Œå¦‚ "61 62 00 63"ã€‚
+// ½«×Ö·û´®£¨º¬\0£©×ª»»Îª16½øÖÆ¸ñÊ½×Ö·û´®£¬Èç "61 62 00 63"¡£
 std::string strToHexString(const char* data, size_t len);
 
-// â”€â”€ Interactive input with command history â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ©¤©¤ Interactive input with command history ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 // Read a line from stdin with up/down arrow history support.
 // Returns:  1 = line read into buf    0 = EOF (Ctrl+D)   -1 = signal
 int ReadLine(char* buf, size_t size);

@@ -40,7 +40,7 @@ int broadcastMessage(const Message& msg, const std::vector<Client>& ClientList)
 	return 0;
 }
 
-int HandshakeProcess(SOCKET& sSelected, std::vector<Client>& ClientList, string ServerName, string Version)
+int HandshakeProcess(const SOCKET& sSelected, std::vector<Client>& ClientList, string ServerName, string Version)
 {
 	Logger logger = GetLogger(LOG4CPLUS_TEXT("HandshakeProcess"));
 	Json::Reader Reader;
@@ -86,7 +86,7 @@ int HandshakeProcess(SOCKET& sSelected, std::vector<Client>& ClientList, string 
 	return 0;
 }
 
-int NormalProcess(SOCKET& sSelected, std::vector<Client>& ClientList)
+int NormalProcess(const SOCKET& sSelected, std::vector<Client>& ClientList)
 {
 	Logger logger = GetLogger(LOG4CPLUS_TEXT("NormalProcess"));
 	Packet temp = Packet::PacketFromNetworkRecv(sSelected);

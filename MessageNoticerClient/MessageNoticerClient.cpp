@@ -1,4 +1,4 @@
-// MessageNoticerClient.cpp â€” Interactive TCP client.
+// MessageNoticerClient.cpp ¡ª Interactive TCP client.
 #include "pch.h"
 #include "Network.h"
 #include "Logger.h"
@@ -19,7 +19,7 @@ int main()
 	InitNetwork();
 	SOCKET sServer = INVALID_SOCKET;
 
-	// â”€â”€ Connect (with retry) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	// ©¤©¤ Connect (with retry) ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 	while (gRunning)
 	{
 		if (CreateSocket(sServer, "12306", "127.0.0.1") == 0)
@@ -29,7 +29,7 @@ int main()
 	}
 	if (!gRunning) { CloseSocket(sServer); return 1; }
 
-	// â”€â”€ Handshake â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	// ©¤©¤ Handshake ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 	try
 	{
 		std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -46,7 +46,7 @@ int main()
 		return 1;
 	}
 
-	// â”€â”€ Interactive event loop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	// ©¤©¤ Interactive event loop ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 	// Tell server to send us all messages, get client list
 	WaitingMessagePacket(0).Send(sServer);
 	GetClientListPacket(MessagePriority::Low, 0).Send(sServer);
@@ -66,7 +66,7 @@ int main()
 			break;  // disconnected or fatal error
 	}
 
-	// â”€â”€ Cleanup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	// ©¤©¤ Cleanup ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 	gRunning = 0;
 	consoleThr.join(); 
 	CloseSocket(sServer);
