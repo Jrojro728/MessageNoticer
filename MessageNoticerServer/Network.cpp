@@ -143,7 +143,7 @@ int Recv(SOCKET& s, std::vector<char>& DataBuffer)
 	{
 		DataBuffer.clear();
 #ifdef SERVER_APP
-		throw ClientSocketClosedException();
+		throw SocketClosedException();
 #else
 		return (n == 0) ? 0 : SOCKET_ERROR;
 #endif
@@ -162,7 +162,7 @@ int Recv(SOCKET& s, std::vector<char>& DataBuffer)
 		LOG_ERROR(NetworkLogger, "Invalid packet size: " << packetSize << " from socket " << s);
 		DataBuffer.clear();
 #ifdef SERVER_APP
-		throw ClientSocketClosedException();
+		throw SocketClosedException();
 #else
 		return SOCKET_ERROR;
 #endif
@@ -177,7 +177,7 @@ int Recv(SOCKET& s, std::vector<char>& DataBuffer)
 	{
 		DataBuffer.clear();
 #ifdef SERVER_APP
-		throw ClientSocketClosedException();
+		throw SocketClosedException();
 #else
 		return (n >= 0) ? 0 : SOCKET_ERROR;
 #endif

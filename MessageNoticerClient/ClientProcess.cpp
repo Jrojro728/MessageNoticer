@@ -21,7 +21,7 @@ extern volatile std::sig_atomic_t gRunning;
 
 /// <summary>
 /// Perform the handshake with the server.
-///   1. Send HandshakeRequest (with a random client name).
+///   1. Send HandshakeRequest.
 ///   2. Receive HandshakeInfo, check max-users.
 ///   3. Send HandshakeAck.
 ///   4. Receive HandshakeSuccess and get client itself.
@@ -29,17 +29,13 @@ extern volatile std::sig_atomic_t gRunning;
 /// </summary>
 /// <param name="sServer">Connected server socket.</param>
 /// <returns>0 on success, 1 on failure.</returns>
-int HandshakeProcess(SOCKET& sServer)
+int HandshakeProcess(SOCKET& sServer, string ClientName)
 {
 	Logger logger = GetLogger(LOG4CPLUS_TEXT("HandshakeProcess"));
 	Json::Reader Reader;
 	Json::Value Root;
 
-	char randStr[8];
-	srand((unsigned int)time(NULL));
-	snprintf(randStr, sizeof(randStr), "%d", rand() % 100000);
-
-	HandshakePacket(randStr, 1).Send(sServer);
+	HandshakePacket(ClientName.c_str(), 1).Send(sServer);
 
 	Packet Received = Packet::PacketFromNetworkRecv(sServer);
 	if (Received.GetPacketID() == PacketType::HandshakeError)
@@ -56,14 +52,17 @@ int HandshakeProcess(SOCKET& sServer)
 
 	// If the server is full, send a "No" ack so it knows we're leaving
 	if (Root["info"]["maxuser"].asInt() - Root["info"]["useronline"].asInt() < 1)
-		HandshakeAckPacket(randStr, No).Send(sServer);
+	{
+		HandshakeAckPacket(ClientName.c_str(), No).Send(sServer);
+		return 1;
+	}
 
-	HandshakeAckPacket(randStr, Ok).Send(sServer);
+	HandshakeAckPacket(ClientName.c_str(), Ok).Send(sServer);
 
 	Received = Packet::PacketFromNetworkRecv(sServer);
 	if (Received.GetPacketID() != PacketType::HandshakeSuccess)
 	{
-		LOG_ERROR(logger, "Failed to get HandshakeSuccess flag");
+		LOG_ERROR(logger, "Failed to get HandshakeSuccess flag!");
 		return 1;
 	}
 
@@ -71,7 +70,7 @@ int HandshakeProcess(SOCKET& sServer)
 	Json::Value ClientInfo;
 	if (!Reader.parse(Received.GetData(sizeof(uint8_t)), ClientInfo, false))
 	{
-		LOG_ERROR(logger, "Invalid HandshakeSuccess packet data");
+		LOG_ERROR(logger, "Invalid HandshakeSuccess packet received!");
 		return 1;
 	}
 	LocalClient = Client(ClientInfo["id"].asUInt64(), uuid::uuid_from_string(ClientInfo["uuid"].asString()), ClientInfo["name"].asString(), ClientInfo["status"].asUInt());
@@ -134,7 +133,7 @@ int NormalProcess(SOCKET& sServer)
 	// ── Socket is readable — receive a packet ───────────────────
 	// ── Explicitly check for disconnect before reading a full packet ──
 	// Client-side Recv() returns 0/error on EOF instead of throwing
-	// ClientSocketClosedException, so PacketFromNetworkRecv would turn
+	// SocketClosedException, so PacketFromNetworkRecv would turn
 	// it into a generic runtime_error. We peek first to detect the FIN.
 	char peekBuf;
 	int peekRet = recv(sServer, &peekBuf, 1, MSG_PEEK);
@@ -213,7 +212,7 @@ int NormalProcess(SOCKET& sServer)
 			break;
 		}
 	}
-	catch (ClientSocketClosedException&)
+	catch (SocketClosedException&)
 	{
 		LOG_FATAL(logger, "Server disconnected.");
 		gRunning = 0;
