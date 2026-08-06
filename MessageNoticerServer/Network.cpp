@@ -59,9 +59,6 @@ int CreateSocket(SOCKET& s, const char* port, const char* address)
     if (getaddrinfo(address, port, &hints, &result))
     {
         LOG_FATAL(NetworkLogger, "getaddrinfo failed: " << GetSocketError());
-#ifdef _WIN32
-        WSACleanup();
-#endif
         return 1;
     }
 
@@ -71,9 +68,6 @@ int CreateSocket(SOCKET& s, const char* port, const char* address)
         if (s == INVALID_SOCKET)
         {
             LOG_FATAL(NetworkLogger, "socket error: " << GetSocketError());
-#ifdef _WIN32
-            WSACleanup();
-#endif
             continue;
         }
 
@@ -82,9 +76,6 @@ int CreateSocket(SOCKET& s, const char* port, const char* address)
             int err = errno;  // save before CloseSocket/WSACleanup clear it
             LOG_FATAL(NetworkLogger, "connect error: " << err);
             CloseSocket(s);
-#ifdef _WIN32
-            WSACleanup();
-#endif
             connectErrno = err;
             s = INVALID_SOCKET;
             continue;
@@ -103,9 +94,6 @@ int CreateSocket(SOCKET& s, const char* port, const char* address)
         LOG_FATAL(NetworkLogger, "bind error: " << GetSocketError());
         freeaddrinfo(result);
         CloseSocket(s);
-#ifdef _WIN32
-        WSACleanup();
-#endif
         s = INVALID_SOCKET;
         return 1;
     }
@@ -114,9 +102,6 @@ int CreateSocket(SOCKET& s, const char* port, const char* address)
     {
         LOG_FATAL(NetworkLogger, "listen error: " << GetSocketError());
         CloseSocket(s);
-#ifdef _WIN32
-        WSACleanup();
-#endif
         s = INVALID_SOCKET;
         return 1;
     }
@@ -126,9 +111,6 @@ int CreateSocket(SOCKET& s, const char* port, const char* address)
     freeaddrinfo(result);
     if (s == INVALID_SOCKET) {
         LOG_FATAL(NetworkLogger, "Unable to create socket! " << createErr);
-#ifdef _WIN32
-        WSACleanup();
-#endif
         return 1;
     }
     return 0;
