@@ -35,7 +35,8 @@ int main(int argc, char* argv[])
 	std::string ServerName = "MessageNoticer";
 	cmdl({ "-n", "--name" }) >> ServerName;
 	std::string Version = "0.1.0.4";
-	cmdl({ "-v", "--version" }) >> Version;
+	if (cmdl({ "-v", "--version" }))
+		std::cout << Version;
 	int maxUsers = 64;
 	cmdl({ "-m", "--max" }) >> maxUsers;
 

@@ -24,7 +24,7 @@ constexpr size_t MAX_PACKET_SIZE = 32 * 1024 * 1024;
 
 // ---------- Exception ----------
 
-class ClientSocketClosedException : public std::exception
+class SocketClosedException : public std::exception
 {
 public:
 	const char* what() const noexcept override {
@@ -47,13 +47,13 @@ int CreateSocket(SOCKET& s, const char* port, const char* address);
 /// Receive data from a socket.
 /// Fills DataBuffer (RAII, no manual cleanup needed).
 /// Returns bytes received, 0 for graceful close, SOCKET_ERROR on failure.
-/// On the server side, throws ClientSocketClosedException on close/error.
+/// On the server side, throws SocketClosedException on close/error.
 /// Receive a complete packet from a socket (loop until full packet is received).
 /// Handles partial recv() and sticky packets: reads the 4-byte size header,
 /// validates it, then reads the remaining bytes. Leaves excess data in the
 /// kernel buffer for the next select() cycle.
 /// Returns bytes received, 0 for graceful close, SOCKET_ERROR on failure.
-/// On the server side, throws ClientSocketClosedException on close/error.
+/// On the server side, throws SocketClosedException on close/error.
 int Recv(SOCKET& s, std::vector<char>& DataBuffer);
 
 /// Send a fixed-size buffer.
