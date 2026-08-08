@@ -9,8 +9,17 @@ int broadcastMessage(const Message& msg, const std::vector<Client>& ClientList)
 {
 	Logger logger = GetLogger(LOG4CPLUS_TEXT("BroadcastMessage"));
 	LOG_DEBUG(logger, CLR_BOLD CLR_GREEN "Broadcasting message: \"" << msg.GetTitle() << "\" with content: " << msg.GetContentJson() << CLR_RESET);
+
+	// If the receiver is the server itself, Just print the message
+	if (msg.GetReceiver() == ServerClient)
+	{
+		LOG_INFO(logger, CLR_YELLOW "[From " << msg.GetSender().GetSocket()
+			<< "]" CLR_RESET CLR_GREEN" message: title: \""  << msg.GetTitle() << "\", " CLR_RESET CLR_CYAN << msg.GetContentJson() << CLR_RESET);
+		return 0;
+	}
+
 	// If the receiver is a specific client, send directly to that client.
-	if (msg.GetReceiver() != BroadcastClient)
+	if (msg.GetReceiver() != BroadcastClient && msg.GetReceiver() != ServerClient)
 	{
 		try
 		{
@@ -112,7 +121,7 @@ int NormalProcess(const SOCKET& sSelected, std::vector<Client>& ClientList)
 			{
 				uint8_t MinMessageLevel = temp.GetData<uint8_t>();
 				it->SetMinMessageLevel(MinMessageLevel);
-				LOG_DEBUG(logger, "Set min message level as: " << MinMessageLevel << " for client " << sSelected);
+				LOG_DEBUG(logger, "Set min message level as: " << std::to_string(MinMessageLevel) << " for client " << sSelected);
 				it->SetClientStatus(ClientStatus::Waiting);
 			}
 			break;
@@ -128,7 +137,12 @@ int NormalProcess(const SOCKET& sSelected, std::vector<Client>& ClientList)
 				LOG_DEBUG(logger, "Message content: "	<< Temp.GetContentJson());
 				LOG_DEBUG(logger, "Message priority: "	<< static_cast<int>(Temp.GetPriority()));
 				LOG_DEBUG(logger, "Message sender: "	<< Temp.GetSender().GetSocket());
-				LOG_DEBUG(logger, "Message receiver: " << ((Temp.GetReceiver() == BroadcastClient) ? "(Broadcast)" : std::to_string(Temp.GetReceiver().GetSocket())));
+				if (Temp.GetReceiver() == BroadcastClient)
+					LOG_DEBUG(logger, "Message receiver: (Broadcast)");
+				else if (Temp.GetReceiver() == ServerClient)
+					LOG_DEBUG(logger, "Message receiver: (Server)");
+				else
+					LOG_DEBUG(logger, "Message receiver: " << std::to_string(Temp.GetReceiver().GetSocket()));
 				LOG_DEBUG(logger, "Message send time: " << Temp.GetFormattedSendTime());
 				broadcastMessage(Temp, ClientList);
 			}

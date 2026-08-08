@@ -17,7 +17,7 @@ std::queue<std::string> gCmdQueue;
 // Mutex for thread-safe access to ClientList
 std::shared_mutex gClientMutex;
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
 	//signal handlers
 	signal(SIGINT, OnSignal);
@@ -122,9 +122,15 @@ int main(int argc, char* argv[])
 
 		// ---- 2. Collect ready client sockets (exclude sListen) ----
 		std::vector<SOCKET> clientReady;
+#ifdef _WIN32 //如果你不考虑标准问题的话，这在windows上时一种更快的方法，但在linux上不适用
 		for (size_t i = 0; i < readset.fd_count; i++)
 		{
 			SOCKET s = readset.fd_array[i];
+#else 
+		for (SOCKET s = 0; s <= maxSock; ++s)
+		{
+#endif // _WIN32
+			
 			if (s == sListen) continue;
 			if (FD_ISSET(s, &tmpset))
 				clientReady.push_back(s);

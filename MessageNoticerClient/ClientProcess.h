@@ -35,7 +35,7 @@ void ProcessCommand(const std::string& line, SOCKET& sServer);
 // ── select-based packet handler ────────────────────────────
 /// <summary>
 /// One round of select() + packet receive + dispatch.
-/// Returns 0 on success (or timeout), 1 on error/disconnect.
 /// Called from the main event loop.
 /// </summary>
+/// <return>0 on success (or timeout), 1 on error, -1 on disconnect.</return>
 int NormalProcess(SOCKET& sServer);

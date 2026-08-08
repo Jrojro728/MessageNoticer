@@ -15,7 +15,10 @@ Client LocalClient = Client(INVALID_SOCKET); //The Client itself
 static std::mutex gCmdMutex;
 static std::deque<std::string> gCmdQueue;
 
+// Global running flag
 extern volatile std::sig_atomic_t gRunning;
+volatile std::sig_atomic_t gDisconnected = 0;
+volatile std::sig_atomic_t gWillRestart = 0;
 
 // ── HandshakeProcess ─────────────────────────────────────────────────
 
@@ -140,8 +143,8 @@ int NormalProcess(SOCKET& sServer)
 	if (peekRet == 0)
 	{
 		LOG_FATAL(logger, "Server disconnected.");
-		gRunning = 0;
-		return 1;
+		gDisconnected = 1;
+		return -1;
 	}
 	if (peekRet == SOCKET_ERROR)
 	{
@@ -283,13 +286,31 @@ void ProcessCommand(const std::string& line, SOCKET& sServer)
 	// /help
 	auto cmdHelp = [&]() {
 		LOG_INFO(logger, CLR_CYAN "=== Commands ===" CLR_RESET);
-		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/help | /h" CLR_RESET "           Show this help");
+		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/help | /h | /?" CLR_RESET "      Show this help");
 		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/msg <id> <text>" CLR_RESET "     Send message to client <id>");
 		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/broadcast <text>" CLR_RESET "    Send message to all");
 		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/list" CLR_RESET "                List online clients");
 		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/level <0-255>" CLR_RESET "       Set min message level");
 		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/exit | /quit" CLR_RESET "        Disconnect and exit");
-		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/whoami" CLR_RESET "			   Show your identity");	
+		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/whoami" CLR_RESET "			   Show your identity");
+		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/connect" CLR_RESET "			   Connect to the server");
+	};
+
+	auto cmdMsgServer = [&]() {
+		if (t.size() < 3) {
+			LOG_WARN(logger, "Usage: /msg server <text>");
+			return;
+		}
+
+		std::string text;
+		for (size_t i = 2; i < t.size(); ++i) {
+			if (i > 2) text += " ";
+			text += t[i];
+		}
+
+		Message msg("", TextContent(text), LocalClient, ServerClient);
+		SendAMessagePacket(msg, 1).Send(sServer);
+		LOG_INFO(logger, CLR_GREEN "Message sent to server." CLR_RESET);
 	};
 
 	// /msg
@@ -298,15 +319,23 @@ void ProcessCommand(const std::string& line, SOCKET& sServer)
 			LOG_WARN(logger, "Usage: /msg <receiver_id> <text>");
 			return;
 		}
-		SOCKET receiverId;
+
+		if (t[1] == "server")
+		{
+			cmdMsgServer();
+			return;
+		}
+
+		SOCKET receiverId = INVALID_SOCKET;
 		try { receiverId = (SOCKET)std::stoi(t[1]); }
 		catch (...) { LOG_WARN(logger, "Invalid receiver ID: " << t[1]); return; }
-
+		
 		std::string text;
 		for (size_t i = 2; i < t.size(); ++i) {
 			if (i > 2) text += " ";
 			text += t[i];
 		}
+		
 		Message msg("", TextContent(text), LocalClient, Client(receiverId));
 		SendAMessagePacket(msg, 1).Send(sServer);
 		LOG_INFO(logger, CLR_GREEN "Message sent to [" << receiverId << "]" CLR_RESET);
@@ -351,7 +380,7 @@ void ProcessCommand(const std::string& line, SOCKET& sServer)
 	};
 
 	auto cmdWhoami = [&]() {
-		WhoAmIPacket("whoami?").Send(sServer);
+		WhoAmIPacket("User request").Send(sServer);
 	};
 
 	// /exit | /quit
@@ -360,11 +389,22 @@ void ProcessCommand(const std::string& line, SOCKET& sServer)
 		gRunning = 0;
 	};
 
+	auto cmdConnect = [&]() {
+		if (!gDisconnected)
+		{
+			LOG_INFO(logger, "Already connected to the server.");
+			return;
+		}
+		gWillRestart = 1;
+		LOG_INFO(logger, "Will attempt to reconnect to the server...");
+	};
+
 	// ── Dispatch table ───────────────────────────────────────────
 	struct Cmd { const char* name; std::function<void()> fn; };
 	const Cmd dispatch[] = {
 		{ "/help",      cmdHelp },
 		{ "/h",         cmdHelp },
+		{ "/?",			cmdHelp },
 		{ "/msg",       cmdMsg },
 		{ "/broadcast", cmdBroadcast },
 		{ "/list",      cmdList },
@@ -372,6 +412,7 @@ void ProcessCommand(const std::string& line, SOCKET& sServer)
 		{ "/exit",      cmdExit },
 		{ "/quit",      cmdExit },
 		{ "/whoami",    cmdWhoami },
+		{ "/connect",   cmdConnect },
 	};
 
 	for (auto& entry : dispatch) {

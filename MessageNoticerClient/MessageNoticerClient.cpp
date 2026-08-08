@@ -6,6 +6,8 @@
 #include "NormalPacket.h"
 
 volatile std::sig_atomic_t gRunning = 1;
+extern volatile std::sig_atomic_t gDisconnected;
+extern volatile std::sig_atomic_t gWillRestart;
 static void OnSignal(int) { gRunning = 0; }
 
 int main(int argc, char* argv[])
@@ -39,6 +41,7 @@ int main(int argc, char* argv[])
 	InitNetwork();
 	SOCKET sServer = INVALID_SOCKET;
 
+RESTART:
 	// Connect (with retry)
 	while (gRunning)
 	{
@@ -48,6 +51,7 @@ int main(int argc, char* argv[])
 		std::this_thread::sleep_for(std::chrono::seconds(2));
 	}
 	if (!gRunning) { CloseSocket(sServer); return 1; }
+	gWillRestart = 0; // Reset restart flag
 
 	// Handshake
 	try
@@ -78,17 +82,32 @@ int main(int argc, char* argv[])
 	GetClientListPacket(MessagePriority::Low, 0).Send(sServer);
 
 	std::thread consoleThr(ConsoleThread);
+	if (gDisconnected || gWillRestart)
+	{
+		LOG_INFO(logger, CLR_YELLOW "Reconnect Success!" CLR_RESET);
+	}
+	gDisconnected = 0; // Reset disconnected flag
 	LOG_INFO(logger, "Interactive mode. Type /help for commands.");
 
 	while (gRunning)
 	{
+		int result = 0;
+		if (gWillRestart)
+		{
+			consoleThr.detach();
+			CloseSocket(sServer);
+			LOG_INFO(logger, CLR_YELLOW "Reconnecting to server..." CLR_RESET);
+			goto RESTART;
+		}
 		// Poll and dispatch console commands (non-blocking)
 		std::string cmdLine = PollCommand();
 		if (!cmdLine.empty())
 			ProcessCommand(cmdLine, sServer);
 
 		// Network I/O: select + receive + dispatch
-		if (NormalProcess(sServer) != 0)
+		if (!gDisconnected)
+			result = NormalProcess(sServer);
+		if (result != 0 && result != -1)
 			break;  // disconnected or fatal error
 	}
 
