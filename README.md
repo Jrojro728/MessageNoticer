@@ -1,5 +1,3 @@
-
-
 # MessageNoticer
 
 A c++ short messages system
@@ -57,14 +55,13 @@ A c++ short messages system
 
 ###### 开发前的配置要求
 
-1. 可用的vcpkg
+1. 可用的vcpkg(vscode 设置硬编码了路径，使用时请自行调整)
 2. 一个可以使用c++20标准的编译器
 3. CMake版本 >= 3.16
 
 ###### **安装步骤**
 
-1. git clone
-
+1. clone这个仓库
 ```sh
 git clone https://github.com/jrojro728/MessageNoticer.git
 ```
@@ -121,7 +118,8 @@ filetree
 
 ### 版本控制
 
-您可以在repository参看当前可用版本。
+当前最新可用版本为v0.1.0.4,目前项目仍处于测试阶段,任何问题请issue。
+版本格式-vX.X.X.X
 
 ### 作者
 
@@ -129,7 +127,7 @@ Jrojro728
 
 ### 版权说明
 
-该项目签署了MIT 授权许可，详情请参阅 [LICENSE.txt](https://github.com/shaojintian/Best_README_template/blob/master/LICENSE.txt)
+该项目签署了MIT 授权许可，详情请参阅 [LICENSE.txt](https://github.com/Jrojro728/MessageNoticer/blob/master/LICENSE.txt)
 
 ### 鸣谢
 
@@ -147,7 +145,3 @@ Jrojro728
 [issues-url]: https://img.shields.io/github/issues/jrojro728/MessageNoticer.svg
 [license-shield]: https://img.shields.io/github/license/jrojro728/MessageNoticer.svg?style=flat-square
 [license-url]: https://github.com/jrojro728/MessageNoticer/blob/master/LICENSE.txt
-
-
-
-
