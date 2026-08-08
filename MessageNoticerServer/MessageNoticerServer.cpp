@@ -15,12 +15,19 @@ std::mutex gCmdMutex;
 std::queue<std::string> gCmdQueue;
 
 // Mutex for thread-safe access to ClientList
-std::mutex gClientMutex;
+std::shared_mutex gClientMutex;
 
 int main(int argc, char* argv[])
 {
+	//signal handlers
 	signal(SIGINT, OnSignal);
 	signal(SIGTERM, OnSignal);
+
+	// Enable ANSI escape codes on Windows console
+	if (!EnableVirtualTerminal()) {
+		std::cerr << "Virtual terminal processing not supported.\n";
+		std::cerr << "ANSI escape codes may not work correctly.\n";
+	}
 
 	// ---- Parse CLI args ----
 	argh::parser cmdl(argc, argv, argh::parser::PREFER_PARAM_FOR_UNREG_OPTION);
@@ -41,6 +48,7 @@ int main(int argc, char* argv[])
 	LOG_INFO(logger, ServerName << " v" << Version
 		<< " starting on port " << port);
 
+	// Start Listen
 	SOCKET sListen;
 	std::vector<Client> ClientList;
 	if (CreateSocket(sListen, port.c_str(), NULL) != 0) {
@@ -51,7 +59,7 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	std::thread consoleThr(ConsoleThread);
+	std::thread consoleThr(ConsoleThread); //Start the Console thread
 
 	fd_set readset{};
 	FD_ZERO(&readset);
@@ -107,14 +115,14 @@ int main(int argc, char* argv[])
 				FD_SET(c, &readset);
 				if (c > maxSock) maxSock = c;
 				LOG_INFO(logger, c << " try to login.");
-				std::lock_guard<std::mutex> lock(gClientMutex);
+				std::unique_lock<std::shared_mutex> lock(gClientMutex);
 				ClientList.push_back(Client(c, uuid::nil_uuid(), "", ClientStatus::Handshaking));
 			}
 		}
 
 		// ---- 2. Collect ready client sockets (exclude sListen) ----
 		std::vector<SOCKET> clientReady;
-		for (size_t i = 0; i <= readset.fd_count; i++)
+		for (size_t i = 0; i < readset.fd_count; i++)
 		{
 			SOCKET s = readset.fd_array[i];
 			if (s == sListen) continue;
@@ -134,10 +142,13 @@ int main(int argc, char* argv[])
 				{
 					try
 					{
-						std::lock_guard<std::mutex> lock(gClientMutex);
-						auto it = std::find(ClientList.begin(), ClientList.end(), Client(s));
-						if (it == ClientList.end()) return;
-						uint8_t status = it->GetClientStatus();
+						uint8_t status = 0;
+						{
+							std::shared_lock<std::shared_mutex> readLock(gClientMutex);
+							auto it = std::find(ClientList.begin(), ClientList.end(), Client(s));
+							if (it == ClientList.end()) return;
+							status = it->GetClientStatus();
+						} // 释放读锁，避免在随后 HandshakeProcess 里获取
 						int ret = 0;
 						if (status == Handshaking)
 							ret = HandshakeProcess(s, ClientList, ServerName, Version);
@@ -163,7 +174,7 @@ int main(int argc, char* argv[])
 		// ---- 4. Handle disconnections (single-threaded, modifies readset & ClientList) ----
 		if (!disconnected.empty())
 		{
-			std::lock_guard<std::mutex> lock(gClientMutex);
+			std::unique_lock<std::shared_mutex> lock(gClientMutex);
 			for (SOCKET s : disconnected)
 			{
 				LOG_INFO(logger, s << " logged off.");

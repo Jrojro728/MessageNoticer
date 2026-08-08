@@ -314,7 +314,7 @@ int ReadLine(char* buf, size_t size)
 	{
 		int c = ReadRawChar();
 
-		// ©¤©¤ EOF or signal interrupt ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
+		// EOF or signal interrupt
 		if (c < 0)
 		{
 			result = -1;
@@ -323,7 +323,7 @@ int ReadLine(char* buf, size_t size)
 
 		switch (c)
 		{
-			// ©¤©¤ Enter ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
+			// Enter 
 		case '\n':
 		case '\r':
 		{
@@ -332,8 +332,7 @@ int ReadLine(char* buf, size_t size)
 			done = true;
 			break;
 		}
-
-		// ©¤©¤ Backspace / DEL ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
+		// Backspace / DEL
 		case '\b':
 		case 0x7f:
 		{
@@ -345,43 +344,12 @@ int ReadLine(char* buf, size_t size)
 			}
 			break;
 		}
-
-		// ©¤©¤ Escape sequences (arrows, etc.) ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
-		case 0x1b:
+		case 0x1b: // Escape sequences for linux (arrows, etc.)
 		{
 #ifdef _WIN32
 			// On Windows, _getch() returns 0xE0 or 0x00 as a prefix
-			// for extended keys, then a second call gives the scancode.
-			int c2 = ReadRawChar();
-			int c3 = (c2 == 0xE0 || c2 == 0x00) ? ReadRawChar() : 0;
-
-			// 0x48 = Up arrow, 0x50 = Down arrow (scancodes)
-			if ((c2 == 0x48 || c3 == 0x48))
-			{
-				if (!s_history.empty()) {
-					if (s_historyPos < 0)
-						s_historyPos = (int)s_history.size() - 1;
-					else if (s_historyPos > 0)
-						--s_historyPos;
-					currentLine = s_history[s_historyPos];
-					RedrawLine(currentLine);
-				}
-			}
-			else if ((c2 == 0x50 || c3 == 0x50))
-			{
-				if (s_historyPos >= 0) {
-					++s_historyPos;
-					if (s_historyPos >= (int)s_history.size()) {
-						s_historyPos = -1;
-						currentLine.clear();
-						RedrawLine(currentLine);
-					}
-					else {
-						currentLine = s_history[s_historyPos];
-						RedrawLine(currentLine);
-					}
-				}
-			}
+			// so we can't handle it here because it will just don't be sent to this case.  
+			// The arrow keys are handled in the 0xE0 case below.
 #else
 			// POSIX: arrow keys send ESC [ A (up), ESC [ B (down).
 			int c2 = ReadRawChar();
@@ -418,17 +386,13 @@ int ReadLine(char* buf, size_t size)
 #endif
 			break;
 		}
-
-		// ©¤©¤ Ctrl+C (literal ETX character, 0x03) ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
-		case 0x03:
+		case 0x03:// Ctrl+C (literal ETX character)
 		{
 			result = -1;
 			done = true;
 			break;
 		}
-
-		// ©¤©¤ Ctrl+D (EOF ¡ª only when the line is empty) ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
-		case 0x04:
+		case 0x04: // Ctrl+D (EOF ¡ª only when the line is empty)
 		{
 			if (currentLine.empty()) {
 				result = 0;
@@ -439,6 +403,38 @@ int ReadLine(char* buf, size_t size)
 			break;
 		}
 
+		case 0xE0: // Windows extended key prefix
+		{
+			int c2 = ReadRawChar();
+
+			// 0x48 = Up arrow, 0x50 = Down arrow (scancodes)
+			if (c2 == 0x48)
+			{
+				if (s_history.empty()) break;
+				if (s_historyPos < 0)
+					s_historyPos = (int)s_history.size() - 1;
+				else if (s_historyPos > 0)
+					--s_historyPos;
+				currentLine = s_history[s_historyPos];
+				RedrawLine(currentLine);
+			}
+			else if (c2 == 0x50)
+			{
+				if (s_historyPos >= 0) {
+					++s_historyPos;
+					if (s_historyPos >= (int)s_history.size()) {
+						s_historyPos = -1;
+						currentLine.clear();
+						RedrawLine(currentLine);
+					}
+					else {
+						currentLine = s_history[s_historyPos];
+						RedrawLine(currentLine);
+					}
+				}
+			}
+			break;
+		}
 		// ©¤©¤ Printable ASCII characters ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 		default:
 		{

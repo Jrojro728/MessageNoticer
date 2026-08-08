@@ -32,6 +32,7 @@
 #include <deque>
 #include <algorithm>
 #include <future>
+#include <shared_mutex>
 
 // Platform-specific socket headers
 #ifdef _WIN32

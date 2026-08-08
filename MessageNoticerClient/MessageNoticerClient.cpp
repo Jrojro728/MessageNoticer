@@ -10,6 +10,7 @@ static void OnSignal(int) { gRunning = 0; }
 
 int main(int argc, char* argv[])
 {
+	//signal handlers
 	signal(SIGINT, OnSignal);
 	signal(SIGTERM, OnSignal);
 
@@ -20,7 +21,7 @@ int main(int argc, char* argv[])
 	//Random user name
 	char *randStr = new char[12];
 	srand((unsigned int)time(NULL));
-	snprintf(randStr, sizeof(randStr), "USER%d\0", rand() % 100000);
+	snprintf(randStr, 12, "USER%d", rand() % 100000);
 
 	// Parse CLI args
 	argh::parser cmdl(argc, argv, argh::parser::PREFER_PARAM_FOR_UNREG_OPTION);

@@ -2,10 +2,13 @@
 #include "ServerProcess.h"
 #include "Message.h"
 
+// Mutex for thread-safe access to ClientList
+extern std::shared_mutex gClientMutex;
+
 int broadcastMessage(const Message& msg, const std::vector<Client>& ClientList)
 {
 	Logger logger = GetLogger(LOG4CPLUS_TEXT("BroadcastMessage"));
-	LOG_DEBUG(logger, CLR_BOLD CLR_GREEN "Broadcasting message: " << msg.GetTitle() << " with content: " << msg.GetContentJson() << CLR_RESET);
+	LOG_DEBUG(logger, CLR_BOLD CLR_GREEN "Broadcasting message: \"" << msg.GetTitle() << "\" with content: " << msg.GetContentJson() << CLR_RESET);
 	// If the receiver is a specific client, send directly to that client.
 	if (msg.GetReceiver() != BroadcastClient)
 	{
@@ -21,6 +24,8 @@ int broadcastMessage(const Message& msg, const std::vector<Client>& ClientList)
 			return 1;
 		}
 	}
+	
+	std::shared_lock<std::shared_mutex> ReadLock(gClientMutex);
 	// Broadcast to all clients whose status is Waiting and min message level is less than or equal to the message's priority, except the sender.
 	for (const auto& client : ClientList)
 	{
@@ -62,8 +67,10 @@ int HandshakeProcess(const SOCKET& sSelected, std::vector<Client>& ClientList, s
 		return 1;
 	}
 
+	std::shared_lock<std::shared_mutex> ReadLock(gClientMutex);
 	// Send info to client
 	HandshakeInfoPacket(ServerName, Version, 64, ClientList.size(), 1, Online).Send(sSelected);
+	ReadLock.unlock();
 	// Ack from client
 	if (!Reader.parse(Packet::PacketFromNetworkRecv(sSelected).GetData(), Root, false))
 	{
@@ -79,6 +86,7 @@ int HandshakeProcess(const SOCKET& sSelected, std::vector<Client>& ClientList, s
 	}
 
 	//Send Handshake success
+	std::unique_lock<std::shared_mutex> Lock(gClientMutex);
 	ClientList.erase(std::find(ClientList.begin(), ClientList.end(), Client(sSelected)));
 	Client NewClient(sSelected, UUIDGenerator(), Root["name"].asString(), ClientStatus::Ready);
 	ClientList.push_back(NewClient);
@@ -91,6 +99,7 @@ int NormalProcess(const SOCKET& sSelected, std::vector<Client>& ClientList)
 	Logger logger = GetLogger(LOG4CPLUS_TEXT("NormalProcess"));
 	Packet temp = Packet::PacketFromNetworkRecv(sSelected);
 	int16_t PacketID = temp.GetPacketID();
+	std::shared_lock<std::shared_mutex> ReadLock(gClientMutex);
 	
 	// Handle the packet based on its ID.
 	switch (PacketID)
