@@ -42,6 +42,9 @@ int main(int argc, char* argv[])
 	SOCKET sServer = INVALID_SOCKET;
 
 RESTART:
+	//Init interactive console thread
+	std::thread consoleThr(ConsoleThread);
+
 	// Connect (with retry)
 	while (gRunning)
 	{
@@ -81,7 +84,6 @@ RESTART:
 	WaitingMessagePacket(0).Send(sServer);
 	GetClientListPacket(MessagePriority::Low, 0).Send(sServer);
 
-	std::thread consoleThr(ConsoleThread);
 	if (gDisconnected || gWillRestart)
 	{
 		LOG_INFO(logger, CLR_YELLOW "Reconnect Success!" CLR_RESET);

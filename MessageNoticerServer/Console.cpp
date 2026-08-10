@@ -173,14 +173,21 @@ static int s_historyPos = -1;   // -1 = brand-new input, 0..n = browsing history
 // ── Low-level character read ─────────────────────────────────────────
 
 #ifdef _WIN32
-
 /// <summary>
 /// Read a single keystroke from the console (Windows).  Uses _getch()
 /// which returns the key code directly without waiting for Enter.
 /// </summary>
-static inline int ReadRawChar()
+static int ReadRawChar()
 {
-	return _getch();
+	while (gRunning)       // 轮询 gRunning，让外部可以随时停止
+	{
+		if (_kbhit())      // 非阻塞检查是否有输入
+			return _getch();   // 有数据，绝不会阻塞
+
+		// 没有输入，短暂休眠避免 CPU 100% 占用，同时提供快速响应
+		Sleep(1);          // 1ms；如果需要更低 CPU 占用可改为 10-20ms
+	}
+	return -1;            // gRunning == 0，停止
 }
 #else
 /// <summary>

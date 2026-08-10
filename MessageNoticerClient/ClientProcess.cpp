@@ -292,8 +292,8 @@ void ProcessCommand(const std::string& line, SOCKET& sServer)
 		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/list" CLR_RESET "                List online clients");
 		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/level <0-255>" CLR_RESET "       Set min message level");
 		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/exit | /quit" CLR_RESET "        Disconnect and exit");
-		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/whoami" CLR_RESET "			   Show your identity");
-		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/connect" CLR_RESET "			   Connect to the server");
+		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/whoami" CLR_RESET "              Show your identity");
+		LOG_INFO(logger, "  " CLR_BOLD CLR_CYAN "/connect" CLR_RESET "             Connect to the server");
 	};
 
 	auto cmdMsgServer = [&]() {
@@ -315,14 +315,14 @@ void ProcessCommand(const std::string& line, SOCKET& sServer)
 
 	// /msg
 	auto cmdMsg = [&]() {
-		if (t.size() < 3) {
-			LOG_WARN(logger, "Usage: /msg <receiver_id> <text>");
-			return;
-		}
-
 		if (t[1] == "server")
 		{
 			cmdMsgServer();
+			return;
+		}
+
+		if (t.size() < 3) {
+			LOG_WARN(logger, "Usage: /msg <receiver_id> <text>");
 			return;
 		}
 
