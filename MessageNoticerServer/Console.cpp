@@ -21,7 +21,7 @@ void ConsoleThread()
 	{
 		char buf[4096];
 		int ret = ReadLine(buf, sizeof(buf));
-		if (ret <= 0) raise(SIGINT);
+		if (ret <= 0) break;
 
 		size_t len = strlen(buf);
 		if (len == 0) continue;
