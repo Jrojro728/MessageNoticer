@@ -4,10 +4,10 @@
 #include "Logger.h"
 #include "ClientProcess.h"
 #include "NormalPacket.h"
+#include "Console.h"
 
 volatile std::sig_atomic_t gRunning = 1;
 extern volatile std::sig_atomic_t gDisconnected;
-extern volatile std::sig_atomic_t gWillRestart;
 static void OnSignal(int) { gRunning = 0; }
 
 int main(int argc, char* argv[])
@@ -15,6 +15,12 @@ int main(int argc, char* argv[])
 	//signal handlers
 	signal(SIGINT, OnSignal);
 	signal(SIGTERM, OnSignal);
+
+	// Enable ANSI escape codes on Windows console
+	if (!EnableVirtualTerminal()) {
+		std::cerr << "Virtual terminal processing not supported.\n";
+		std::cerr << "ANSI escape codes may not work correctly.\n";
+	}
 
 	//init logger
 	log4cplus::Initializer init;
@@ -27,8 +33,8 @@ int main(int argc, char* argv[])
 
 	// Parse CLI args
 	argh::parser cmdl(argc, argv, argh::parser::PREFER_PARAM_FOR_UNREG_OPTION);
-	std::string port = "12306";
-	cmdl({ "-p", "--port" }) >> port;
+	std::string ServerPort = "12306";
+	cmdl({ "-p", "--port" }) >> ServerPort;
 	std::string ServerAddress = "127.0.0.1";
 	cmdl({ "-a", "--address" }) >> ServerAddress;
 	std::string ClientName = randStr;
@@ -48,13 +54,12 @@ RESTART:
 	// Connect (with retry)
 	while (gRunning)
 	{
-		if (CreateSocket(sServer, port.c_str(), ServerAddress.c_str()) == 0)
+		if (CreateSocket(sServer, ServerPort.c_str(), ServerAddress.c_str()) == 0)
 			break;
 		LOG_FATAL(logger, "Failed to connect server, retrying in 2s...");
 		std::this_thread::sleep_for(std::chrono::seconds(2));
 	}
 	if (!gRunning) { CloseSocket(sServer); return 1; }
-	gWillRestart = 0; // Reset restart flag
 
 	// Handshake
 	try
@@ -84,7 +89,7 @@ RESTART:
 	WaitingMessagePacket(0).Send(sServer);
 	GetClientListPacket(MessagePriority::Low, 0).Send(sServer);
 
-	if (gDisconnected || gWillRestart)
+	if (gDisconnected)
 	{
 		LOG_INFO(logger, CLR_YELLOW "Reconnect Success!" CLR_RESET);
 	}
@@ -94,17 +99,22 @@ RESTART:
 	while (gRunning)
 	{
 		int result = 0;
-		if (gWillRestart)
+		// Poll and dispatch console commands (non-blocking)
+		try
 		{
+			std::string cmdLine = PollCommand();
+			if (!cmdLine.empty())
+				ProcessCommand(cmdLine, sServer);
+		}
+		catch (RestartException& e)
+		{
+			ServerAddress = e.ServerIP.value_or(ServerAddress);
+			ServerPort = std::to_string(e.ServerPort);
 			consoleThr.detach();
 			CloseSocket(sServer);
-			LOG_INFO(logger, CLR_YELLOW "Reconnecting to server..." CLR_RESET);
+			LOG_INFO(logger, CLR_YELLOW "(Re)connecting to server..." CLR_RESET);
 			goto RESTART;
 		}
-		// Poll and dispatch console commands (non-blocking)
-		std::string cmdLine = PollCommand();
-		if (!cmdLine.empty())
-			ProcessCommand(cmdLine, sServer);
 
 		// Network I/O: select + receive + dispatch
 		if (!gDisconnected)

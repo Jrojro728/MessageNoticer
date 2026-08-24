@@ -28,8 +28,27 @@ class SocketClosedException : public std::exception
 {
 public:
 	const char* what() const noexcept override {
-		return "Client socket closed.";
+		return "Socket closed.";
 	}
+};
+
+
+class RestartException : public std::exception
+{
+public:
+	RestartException() = default;
+	RestartException(std::optional<string> ServerIP, int ServerPort)
+	{
+		this->ServerIP = ServerIP;
+		this->ServerPort = ServerPort;
+	};
+
+	char const* what() const noexcept override {
+		return "The program will restart";
+	}
+
+	std::optional<string> ServerIP;
+	int ServerPort;
 };
 
 // ---------- Function declarations ----------

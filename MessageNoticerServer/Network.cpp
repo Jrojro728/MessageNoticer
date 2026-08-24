@@ -73,7 +73,7 @@ int CreateSocket(SOCKET& s, const char* port, const char* address)
 
 #ifdef CLIENT_APP
         if (connect(s, result->ai_addr, (int)result->ai_addrlen) == SOCKET_ERROR) {
-            int err = errno;  // save before CloseSocket/WSACleanup clear it
+            int err = GetSocketError();  // save before CloseSocket/WSACleanup clear it
             LOG_FATAL(NetworkLogger, "connect error: " << err);
             CloseSocket(s);
             connectErrno = err;

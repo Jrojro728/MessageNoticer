@@ -32,6 +32,25 @@ public:
 	}
 };
 
+
+class RestartException : public std::exception
+{
+public:
+	RestartException() = default;
+	RestartException(std::optional<string> ServerIP, int ServerPort)
+	{
+		this->ServerIP = ServerIP;
+		this->ServerPort = ServerPort;
+	};
+
+	char const* what() const noexcept override {
+		return "The program will restart";
+	}
+
+	std::optional<string> ServerIP;
+	int ServerPort;
+};
+
 // ---------- Function declarations ----------
 
 /// Initialize the network subsystem.
