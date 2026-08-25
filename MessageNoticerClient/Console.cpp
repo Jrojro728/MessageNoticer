@@ -194,19 +194,7 @@ void ProcessCommand(const std::string& line, SOCKET& sServer)
 		};
 
 	auto cmdConnect = [&]() {
-		if (!gDisconnected)
-		{
-			LOG_INFO(logger, "Already connected to the server.");
-			return;
-		}
-		if (t.size() == 1)
-			throw RestartException(std::nullopt, 12306);
-		else if (t.size() == 2)
-			throw RestartException(t[1], 12306);
-		else if (t.size() == 3)
-			throw RestartException(t[1], std::stoi(t[2]));
-
-		if (t[1] == "usage")
+		if (t.size() > 1 && t[1] == "usage")
 		{
 			LOG_WARN(logger, "Usage: /connect <ip> <port>");
 			LOG_WARN(logger, "when ip and port isn't offered, try to reconnect");
@@ -214,8 +202,23 @@ void ProcessCommand(const std::string& line, SOCKET& sServer)
 			return;
 		}
 
-		LOG_INFO(logger, "Will attempt to reconnect to the server...");
-		};
+		auto it = std::find(t.cbegin(), t.cend(), "-f");
+		if (!gDisconnected && it == t.cend())
+		{
+			LOG_INFO(logger, "Already connected to the server.");
+			LOG_INFO(logger, "use -f to force reconnect");
+			return;
+		}
+		else if (!gDisconnected && it != t.cend())
+			t.erase(it);
+
+		if (t.size() == 1)
+			throw RestartException();
+		else if (t.size() == 2)
+			throw RestartException(t[1]);
+		else if (t.size() == 3)
+			throw RestartException(t[1], std::stoi(t[2]));
+	};
 
 	// ©¤©¤ Dispatch table ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 	struct Cmd { const char* name; std::function<void()> fn; };

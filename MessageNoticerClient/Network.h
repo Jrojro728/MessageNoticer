@@ -36,8 +36,7 @@ public:
 class RestartException : public std::exception
 {
 public:
-	RestartException() = default;
-	RestartException(std::optional<string> ServerIP, int ServerPort)
+	RestartException(std::optional<string> ServerIP = std::nullopt, std::optional<int> ServerPort = std::nullopt)
 	{
 		this->ServerIP = ServerIP;
 		this->ServerPort = ServerPort;
@@ -47,8 +46,8 @@ public:
 		return "The program will restart";
 	}
 
-	std::optional<string> ServerIP;
-	int ServerPort;
+	std::optional<string> ServerIP = std::nullopt;
+	std::optional<int> ServerPort = 12306;
 };
 
 // ---------- Function declarations ----------

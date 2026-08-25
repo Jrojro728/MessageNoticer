@@ -108,8 +108,9 @@ RESTART:
 		}
 		catch (RestartException& e)
 		{
+			LOG_INFO(logger, "Will attempt to reconnect to the server...");
 			ServerAddress = e.ServerIP.value_or(ServerAddress);
-			ServerPort = std::to_string(e.ServerPort);
+			ServerPort = std::to_string(e.ServerPort.value_or(stoi(ServerPort)));
 			consoleThr.detach();
 			CloseSocket(sServer);
 			LOG_INFO(logger, CLR_YELLOW "(Re)connecting to server..." CLR_RESET);
