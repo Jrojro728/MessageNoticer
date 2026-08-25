@@ -1,5 +1,8 @@
 #pragma once
 #include "pch.h"
+#ifndef WIN32
+#include "Network.h"
+#endif // !WIN32
 
 // Enable Virtual Terminal Processing on Windows console (for ANSI escape codes).
 bool EnableVirtualTerminal();
