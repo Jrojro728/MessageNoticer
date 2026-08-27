@@ -166,7 +166,7 @@ int Recv(SOCKET& s, std::vector<char>& DataBuffer)
 	}
 
 #ifdef _DEBUG
-	LOG_DEBUG(NetworkLogger, s << " recv: " << strToHexString(DataBuffer.data(), packetSize));
+	LOG_DEBUG(NetworkLogger, s << " send: " << strToHexString(DataBuffer.data(), packetSize));
 #endif
 
 	return (int)packetSize;
@@ -176,7 +176,7 @@ int Send(SOCKET& s, const char* DataBuffer, int Size)
 {
     send(s, DataBuffer, Size, 0);
 #ifdef _DEBUG
-    LOG_DEBUG(NetworkLogger, s << "recv: " << strToHexString(DataBuffer, Size));
+    LOG_DEBUG(NetworkLogger, s << " recv: " << strToHexString(DataBuffer, Size));
 #endif
     return 0;
 }

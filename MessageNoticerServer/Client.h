@@ -25,7 +25,8 @@ public:
 	Client(SOCKET s, uint8_t status = ClientStatus::Unknown) : ClientSocket(s), ClientStatus(status) {};
 	Client(SOCKET s, uuid::uuid uuid, string name = "", uint8_t status = ClientStatus::Unknown) : ClientSocket(s), ClientID(uuid), ReadableClientName(name), ClientStatus(status) {};
 	Client(SOCKET s, uuid::uuid uuid, const char* name = "", uint8_t status = ClientStatus::Unknown) : ClientSocket(s), ClientID(uuid), ReadableClientName(name), ClientStatus(status) {};
-	
+	Client(Json::Value json) : ClientSocket(json["id"].asInt()), ClientID(uuid::string_generator()(json["uuid"].asString())), ReadableClientName(json["name"].asString()), MinMessageLevel(json["minMessageLevel"].asUInt()), ClientStatus(json["status"].asUInt()) {};
+
 	int Recv(std::vector<char>& DataBuffer) { return ::Recv(ClientSocket, DataBuffer); };
 	int Send(const char* DataBuffer) { return ::Send(ClientSocket, DataBuffer); };
 	int Send(Packet& packet) { return packet.Send(ClientSocket); };
@@ -69,7 +70,7 @@ public:
 
 private:
 	SOCKET ClientSocket;						//Socket of the client
-	string ReadableClientName =  "";			//If exist
+	string ReadableClientName = "";			//If exist
 	uuid::uuid ClientID = uuid::nil_uuid();		//UUID of the client, used to identify the client
 	uint8_t MinMessageLevel = 0;				//The minimum message level that the client wants to receive, 0 for all messages, none or 255 for no messages
 	uint8_t ClientStatus = 0;					//The status of the client, see ClientStatus Enum

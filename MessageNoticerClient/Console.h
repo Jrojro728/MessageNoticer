@@ -7,6 +7,11 @@
 // Enable Virtual Terminal Processing on Windows console (for ANSI escape codes).
 bool EnableVirtualTerminal();
 
+// ©¤©¤ Interactive input with command history ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
+// Read a line from stdin with up/down arrow history support.
+// Returns:  1 = line read into buf    0 = EOF (Ctrl+D)   -1 = signal
+int ReadLine(char* buf, size_t size);
+
 // ©¤©¤ Interactive console ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
 /// <summary>
 /// Background thread: reads stdin via ReadLine() and enqueues commands.

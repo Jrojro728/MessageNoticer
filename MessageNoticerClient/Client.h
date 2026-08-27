@@ -25,6 +25,7 @@ public:
 	Client(SOCKET s, uint8_t status = ClientStatus::Unknown) : ClientSocket(s), ClientStatus(status) {};
 	Client(SOCKET s, uuid::uuid uuid, string name = "", uint8_t status = ClientStatus::Unknown) : ClientSocket(s), ClientID(uuid), ReadableClientName(name), ClientStatus(status) {};
 	Client(SOCKET s, uuid::uuid uuid, const char* name = "", uint8_t status = ClientStatus::Unknown) : ClientSocket(s), ClientID(uuid), ReadableClientName(name), ClientStatus(status) {};
+	Client(Json::Value json) : ClientSocket(json["id"].asInt()), ClientID(uuid::string_generator()(json["uuid"].asString())), ReadableClientName(json["name"].asString()), MinMessageLevel(json["minMessageLevel"].asUInt()), ClientStatus(json["status"].asUInt()) {};
 
 	int Recv(std::vector<char>& DataBuffer) { return ::Recv(ClientSocket, DataBuffer); };
 	int Send(const char* DataBuffer) { return ::Send(ClientSocket, DataBuffer); };

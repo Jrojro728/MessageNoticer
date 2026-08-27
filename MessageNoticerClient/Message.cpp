@@ -25,8 +25,8 @@ Message::Message(Packet pkt) : Sender(INVALID_SOCKET), Receiver(INVALID_SOCKET)
 	
 	this->MessageUUID = uuid::uuid_from_string(Root["uuid"].asString());
 	this->Priority = static_cast<MessagePriority>(Root["priority"].asUInt());
-	this->Sender = Client(Root["sender"].as<SOCKET>());
-	this->Receiver = Client(Root["receiver"].as<SOCKET>());
+	this->Sender = Client(Root["sender"]);
+	this->Receiver = Client(Root["receiver"]);
 	this->SendTime = std::chrono::system_clock::from_time_t(Root["timestamp"].asInt64());
 }
 
@@ -44,8 +44,8 @@ Message::operator Json::Value() const
 
 	Json::Value Content = this->Content;
 	Root["content"] = Content;
-	Root["sender"] = Sender.GetSocket();
-	Root["receiver"] = Receiver.GetSocket();
+	Root["sender"] = Sender;
+	Root["receiver"] = Receiver;
 	Root["timestamp"] = GetSendTimeEpoch();
 	Root["uuid"] = to_string(MessageUUID);
 

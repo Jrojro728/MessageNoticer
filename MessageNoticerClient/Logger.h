@@ -99,8 +99,3 @@ Logger GetLogger(tstring name);
 
 // 将字符串（含\0）转换为16进制格式字符串，如 "61 62 00 63"。
 std::string strToHexString(const char* data, size_t len);
-
-// ── Interactive input with command history ───────────────────────────
-// Read a line from stdin with up/down arrow history support.
-// Returns:  1 = line read into buf    0 = EOF (Ctrl+D)   -1 = signal
-int ReadLine(char* buf, size_t size);

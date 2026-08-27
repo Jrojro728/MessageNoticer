@@ -6,8 +6,6 @@
 #include "NormalPacket.h"
 #include "Message.h"
 #include "Colors.h"
-#include <functional>
-#include <deque>
 
 // Global running flag
 extern volatile std::sig_atomic_t gRunning;
@@ -151,6 +149,12 @@ int NormalProcess(SOCKET& sServer)
 		if (err == EAGAIN || err == EWOULDBLOCK) return 0;
 #endif
 		LOG_ERROR(logger, "Socket error: " << err);
+		if (err == 10054)
+		{
+			LOG_ERROR(logger, CLR_RED "Connection reset by peer. Server may have closed the connection." CLR_RESET);
+			gDisconnected = 1;
+			return -1;
+		}
 		gRunning = 0;
 		return 1;
 	}
@@ -187,8 +191,14 @@ int NormalProcess(SOCKET& sServer)
 		case PacketType::SendAMessage:
 		{
 			Message msg(pkt);
-			LOG_INFO(logger, CLR_YELLOW "[From " << msg.GetSender().GetSocket()
-				<< "]" CLR_RESET " " CLR_CYAN << msg.GetContentJson() << CLR_RESET);
+			Json::Value contentJson;
+			if (!reader.parse(pkt.GetData(), contentJson, false))
+			{
+				LOG_ERROR(logger, "Invalid message content");
+				return 1;
+			}
+			LOG_INFO(logger, CLR_YELLOW << msg.GetSender().GetReadableClientName()
+				<< ":" CLR_RESET " " CLR_CYAN << contentJson["content"]["content"].asString() << CLR_RESET);
 			break;
 		}
 		case PacketType::WhoAmIResponse:
@@ -213,8 +223,8 @@ int NormalProcess(SOCKET& sServer)
 	catch (SocketClosedException&)
 	{
 		LOG_FATAL(logger, "Server disconnected.");
-		gRunning = 0;
-		return 1;
+		gDisconnected = 1;
+		return -1;
 	}
 	catch (const std::exception& e)
 	{
