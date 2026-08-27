@@ -117,6 +117,23 @@ static void RedrawLine(const std::string& line)
 }
 
 /// <summary>
+/// Redraw from the given column to the end of the line, then place the
+/// cursor at the specified column.
+/// </summary>
+/// <param name="line">Text to display on the input line.</param>
+/// <param name="from">Column index to start redrawing from.</param>
+/// <param name="to">Final cursor column after redrawing.</param>
+static void RedrawRange(const std::string& line, size_t from, size_t to)
+{
+	fputs("\033[K", stdout);               // 清除光标到行尾
+	fputs(line.c_str() + from, stdout);    // 输出 from 之后的剩余文本
+	size_t back = line.size() - to;        // 从行尾回退到 to
+	if (back > 0)
+		fprintf(stdout, "\033[%dD", (int)back);
+	fflush(stdout);
+}
+
+/// <summary>
 /// Read one line of interactive input with full line editing and command
 /// history.  The terminal is switched to raw mode so that keystrokes are
 /// received character-by-character instead of line-buffered.
@@ -126,6 +143,8 @@ static void RedrawLine(const std::string& line)
 ///   Backspace   → delete the previous character
 ///   Up arrow    → navigate backward through history
 ///   Down arrow  → navigate forward through history / new input
+///   Left arrow  → move cursor left
+///   Right arrow → move cursor right
 ///   Ctrl+C      → abort (return -1)
 ///   Ctrl+D      → EOF on empty line (return 0)
 ///   printable   → append to current input, echo to terminal
@@ -142,10 +161,6 @@ int ReadLine(char* buf, size_t size)
 	// _getch() works without explicit raw-mode setup
 #else
 	// ─ Save terminal attributes and enable raw mode ─
-	// Disable: ICANON (line buffering), ECHO (automatic echo),
-	//          ISIG (signal generation on Ctrl+C), IXON (flow control),
-	//          ICRNL (CR→NL translation), OPOST (output processing).
-	// VMIN = 1, VTIME = 0 → read() returns as soon as one byte arrives.
 	struct termios oldt, newt;
 	tcgetattr(STDIN_FILENO, &oldt);
 	newt = oldt;
@@ -160,11 +175,12 @@ int ReadLine(char* buf, size_t size)
 	static std::string currentLine;
 	currentLine.clear();
 	s_historyPos = -1;      // start with a fresh (non-history) line
+	size_t cursorPos = 0;   // The cursor's index in currentLine
 
 	int result = 1;         // assume success until an error occurs
 	bool done = false;
 
-	while (!done)
+	while (!done && gRunning)
 	{
 		int c = ReadRawChar();
 
@@ -177,7 +193,7 @@ int ReadLine(char* buf, size_t size)
 
 		switch (c)
 		{
-			// Enter 
+			// Enter
 		case '\n':
 		case '\r':
 		{
@@ -186,15 +202,25 @@ int ReadLine(char* buf, size_t size)
 			done = true;
 			break;
 		}
-		// Backspace / DEL
+		// Backspace
 		case '\b':
+		{
+			if (cursorPos > 0)
+			{
+				fputs("\033[D", stdout);   // ── 先左移一格，光标对准待删字符 ──
+				--cursorPos;
+				currentLine.erase(cursorPos, 1);
+				RedrawRange(currentLine, cursorPos, cursorPos);
+			}
+			break;
+		}
+		// Delete
 		case 0x7f:
 		{
-			if (!currentLine.empty())
+			if (cursorPos < currentLine.size())
 			{
-				currentLine.pop_back();
-				fputs("\b \b", stdout); // move left, clear, move left again
-				fflush(stdout);
+				currentLine.erase(cursorPos, 1);
+				RedrawRange(currentLine, cursorPos, cursorPos);
 			}
 			break;
 		}
@@ -202,7 +228,7 @@ int ReadLine(char* buf, size_t size)
 		{
 #ifdef _WIN32
 			// On Windows, _getch() returns 0xE0 or 0x00 as a prefix
-			// so we can't handle it here because it will just don't be sent to this case.  
+			// so we can't handle it here because it will just don't be sent to this case.
 			// The arrow keys are handled in the 0xE0 case below.
 #else
 			// POSIX: arrow keys send ESC [ A (up), ESC [ B (down).
@@ -219,6 +245,7 @@ int ReadLine(char* buf, size_t size)
 					else if (s_historyPos > 0)
 						--s_historyPos;
 					currentLine = s_history[s_historyPos];
+					cursorPos = currentLine.size();   // ── NEW: 光标回到行尾 ──
 					RedrawLine(currentLine);
 				}
 			}
@@ -229,11 +256,41 @@ int ReadLine(char* buf, size_t size)
 					if (s_historyPos >= (int)s_history.size()) {
 						s_historyPos = -1;
 						currentLine.clear();
+						cursorPos = 0;                // ── NEW ──
 						RedrawLine(currentLine);
 					}
 					else {
 						currentLine = s_history[s_historyPos];
+						cursorPos = currentLine.size(); // ── NEW ──
 						RedrawLine(currentLine);
+					}
+				}
+			}
+			else if (c2 == '[' && c3 == 'C') // Right
+			{
+				if (cursorPos < currentLine.size()) {
+					++cursorPos;
+					fputs("\033[C", stdout);   // 光标右移一格
+					fflush(stdout);
+				}
+			}
+			else if (c2 == '[' && c3 == 'D') // Left
+			{
+				if (cursorPos > 0) {
+					--cursorPos;
+					fputs("\033[D", stdout);   // 光标左移一格
+					fflush(stdout);
+				}
+			}
+			else if (c2 == '[' && c3 == '3') // Delete (ESC [ 3 ~)
+			{
+				int c4 = ReadRawChar();
+				if (c4 == '~')
+				{
+					if (cursorPos < currentLine.size())
+					{
+						currentLine.erase(cursorPos, 1);
+						RedrawRange(currentLine, cursorPos, cursorPos);
 					}
 				}
 			}
@@ -261,8 +318,8 @@ int ReadLine(char* buf, size_t size)
 		{
 			int c2 = ReadRawChar();
 
-			// 0x48 = Up arrow, 0x50 = Down arrow (scancodes)
-			if (c2 == 0x48)
+			// 0x48 = Up, 0x50 = Down, 0x4B = Left, 0x4D = Right
+			if (c2 == 0x48) // Up
 			{
 				if (s_history.empty()) break;
 				if (s_historyPos < 0)
@@ -270,21 +327,48 @@ int ReadLine(char* buf, size_t size)
 				else if (s_historyPos > 0)
 					--s_historyPos;
 				currentLine = s_history[s_historyPos];
+				cursorPos = currentLine.size();
 				RedrawLine(currentLine);
 			}
-			else if (c2 == 0x50)
+			else if (c2 == 0x50) // Down
 			{
 				if (s_historyPos >= 0) {
 					++s_historyPos;
 					if (s_historyPos >= (int)s_history.size()) {
 						s_historyPos = -1;
 						currentLine.clear();
+						cursorPos = 0;
 						RedrawLine(currentLine);
 					}
 					else {
 						currentLine = s_history[s_historyPos];
+						cursorPos = currentLine.size();
 						RedrawLine(currentLine);
 					}
+				}
+			}
+			else if (c2 == 0x4B) // Left
+			{
+				if (cursorPos > 0) {
+					--cursorPos;
+					fputs("\033[D", stdout);
+					fflush(stdout);
+				}
+			}
+			else if (c2 == 0x4D) // Right
+			{
+				if (cursorPos < currentLine.size()) {
+					++cursorPos;
+					fputs("\033[C", stdout);
+					fflush(stdout);
+				}
+			}
+			else if (c2 == 0x53) // Delete
+			{
+				if (cursorPos < currentLine.size())
+				{
+					currentLine.erase(cursorPos, 1);
+					RedrawRange(currentLine, cursorPos, cursorPos);
 				}
 			}
 			break;
@@ -292,11 +376,12 @@ int ReadLine(char* buf, size_t size)
 		// ── Printable ASCII characters ──────────────────────────
 		default:
 		{
+			// ── MODIFIED: 在光标处插入 ──
 			if (c >= 0x20 && c <= 0x7e && currentLine.size() + 1 < size)
 			{
-				currentLine.push_back((char)c);
-				fputc(c, stdout);  // echo the character
-				fflush(stdout);
+				currentLine.insert(cursorPos, 1, (char)c);
+				RedrawRange(currentLine, cursorPos, cursorPos + 1);
+				++cursorPos;
 			}
 			break;
 		}
@@ -312,6 +397,9 @@ int ReadLine(char* buf, size_t size)
 	// ── On success: copy the line into the output buffer ─────────
 	if (result == 1)
 	{
+		// When the line is empty, just draw the prompt
+		if (currentLine.empty())
+			RedrawLine("");
 		// Append to history (skip when it matches the previous entry)
 		if (!currentLine.empty() &&
 			(s_history.empty() || s_history.back() != currentLine))
@@ -327,7 +415,6 @@ int ReadLine(char* buf, size_t size)
 
 	return result;
 }
-
 
 /// <summary>
 /// Non-blocking poll: return the next queued command, or an empty string.
